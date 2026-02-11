@@ -74,7 +74,16 @@ function initAuth() {
             const user = await API.login(email, password);
 
             if (user._error) {
-                alert(`Error de inicio de sesión: ${user.message}`);
+                // Check for unconfirmed email
+                if (user.message.includes("Email not confirmed")) {
+                    const wantResend = confirm("⚠️ Tu cuenta existe pero no has confirmado tu email.\n\n¿Quieres que te reenviemos el correo de confirmación?");
+                    if (wantResend) {
+                        await API.resendConfirmation(email);
+                        alert("✅ Correo reenviado. Por favor revisa tu bandeja de entrada (y Spam).");
+                    }
+                } else {
+                    alert(`Error de inicio de sesión: ${user.message}`);
+                }
                 btnLogin.innerHTML = originalText;
                 btnLogin.disabled = false;
             } else {

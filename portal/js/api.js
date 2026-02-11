@@ -40,6 +40,15 @@ const API = {
         return user;
     },
 
+    async resendConfirmation(email) {
+        const { error } = await supabase.auth.resend({
+            type: 'signup',
+            email: email,
+        });
+        if (error) return { success: false, message: error.message };
+        return { success: true };
+    },
+
     // ── Health ────────────────────────────────────────────────
 
     async checkHealth() {
