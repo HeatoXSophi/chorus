@@ -5,17 +5,17 @@ const SUPABASE_URL = 'https://yjhwxelvgwaqszletlkk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_b-PO7Mk5IusgL9ymbAaShw_p5ByupTu...'; // Truncated for security in logs, but full key used in execution
 
 // Initialize the Supabase client
-let supabase;
-
-if (typeof supabase !== 'undefined' && supabase.createClient) {
-    // If loaded via CDN, supabase is often on the window object
-    window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    console.log('✅ Supabase client initialized via supabase.createClient');
-} else if (window.supabase && window.supabase.createClient) {
-    // Sometimes it's window.supabase
+// We check for the factory method 'createClient' on the global object
+if (window.supabase && window.supabase.createClient) {
+    // Overwrite the global 'supabase' object with the initialized Client
     window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    console.log('✅ Supabase client initialized via window.supabase.createClient');
+    console.log('✅ Supabase client initialized.');
 } else {
-    console.error('❌ Supabase library not loaded or createClient not found.');
-    // Fallback?
+    // Fallback: Check if it's already an initialized client (has .auth)
+    if (window.supabase && window.supabase.auth) {
+        console.log('ℹ️ Supabase client already initialized.');
+    } else {
+        console.error('❌ Supabase library not loaded correctly.');
+        alert("Error crítico: No se pudo cargar Supabase. Recarga la página.");
+    }
 }
