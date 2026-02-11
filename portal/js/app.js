@@ -51,6 +51,13 @@ function initAuth() {
         document.getElementById('login-form').classList.add('active');
     });
 
+    // Google Login - Coming Soon
+    const btnGoogle = document.querySelector('.btn-google');
+    if (btnGoogle) btnGoogle.addEventListener('click', (e) => {
+        e.preventDefault();
+        alert('🚧 Próximamente: Iniciar sesión con Google.\n\nPor ahora, por favor usa tu Email y Contraseña.');
+    });
+
     // Login
     const btnLogin = document.getElementById('btn-login');
     if (btnLogin) btnLogin.addEventListener('click', async () => {
@@ -226,48 +233,52 @@ let earningsChart = null;
 async function refreshDashboard() {
     if (!state.user) return;
 
-    // Fetch all data in parallel
-    const [balance, economy, skills, health, audit] = await Promise.all([
-        API.getBalance(state.user.ownerId),
-        API.getEconomy(),
-        API.getSkills(),
-        API.checkHealth(),
-        API.getAudit(state.user.ownerId),
-    ]);
+    try {
+        // Fetch all data in parallel
+        const [balance, economy, skills, health, audit] = await Promise.all([
+            API.getBalance(state.user.ownerId).catch(() => 0),
+            API.getEconomy().catch(() => ({})),
+            API.getSkills().catch(() => ({})),
+            API.checkHealth().catch(() => ({})),
+            API.getAudit(state.user.ownerId).catch(() => ({ transactions: [] })),
+        ]);
 
-    state.balance = balance;
+        state.balance = balance;
 
-    // Update stats
-    document.getElementById('stat-balance').textContent = `Ƈ ${balance.toFixed(2)}`;
-    document.getElementById('stat-agents').textContent = health.agentsOnline;
-    document.getElementById('stat-skills').textContent = health.totalSkills;
-    document.getElementById('stat-volume').textContent = `Ƈ ${(economy.total_volume || 0).toFixed(2)}`;
+        // Update stats
+        document.getElementById('stat-balance').textContent = `Ƈ ${balance.toFixed(2)}`;
+        document.getElementById('stat-agents').textContent = health.agentsOnline;
+        document.getElementById('stat-skills').textContent = health.totalSkills;
+        document.getElementById('stat-volume').textContent = `Ƈ ${(economy.total_volume || 0).toFixed(2)}`;
 
-    // Update sidebar balance
-    document.getElementById('user-balance-sidebar').textContent = `Ƈ ${balance.toFixed(2)}`;
+        // Update sidebar balance
+        document.getElementById('user-balance-sidebar').textContent = `Ƈ ${balance.toFixed(2)}`;
 
-    // Chart
-    if (!earningsChart) {
-        earningsChart = new MiniChart('earnings-chart');
+        // Chart
+        if (!earningsChart) {
+            earningsChart = new MiniChart('earnings-chart');
+        }
+
+        // Build chart from audit data or generate demo data
+        const txns = audit?.transactions || [];
+        if (txns.length > 0) {
+            const chartData = txns.slice(-14).map((tx, i) => ({
+                label: tx.timestamp ? new Date(tx.timestamp).toLocaleDateString('es', { day: 'numeric', month: 'short' }) : `#${i + 1}`,
+                value: tx.amount,
+            }));
+            // Make cumulative
+            let cum = 0;
+            chartData.forEach(d => { cum += d.value; d.value = cum; });
+            earningsChart.setData(chartData);
+        } else {
+            earningsChart.setData(earningsChart.generateDemoData(7));
+        }
+
+        // Recent transactions
+        renderTransactions('recent-transactions', txns.slice(-6).reverse(), true);
+    } catch (error) {
+        console.error("Dashboard refresh failed:", error);
     }
-
-    // Build chart from audit data or generate demo data
-    const txns = audit?.transactions || [];
-    if (txns.length > 0) {
-        const chartData = txns.slice(-14).map((tx, i) => ({
-            label: tx.timestamp ? new Date(tx.timestamp).toLocaleDateString('es', { day: 'numeric', month: 'short' }) : `#${i + 1}`,
-            value: tx.amount,
-        }));
-        // Make cumulative
-        let cum = 0;
-        chartData.forEach(d => { cum += d.value; d.value = cum; });
-        earningsChart.setData(chartData);
-    } else {
-        earningsChart.setData(earningsChart.generateDemoData(7));
-    }
-
-    // Recent transactions
-    renderTransactions('recent-transactions', txns.slice(-6).reverse(), true);
 }
 
 // ================================================================
@@ -277,18 +288,22 @@ async function refreshDashboard() {
 async function refreshWallet() {
     if (!state.user) return;
 
-    const [balance, audit] = await Promise.all([
-        API.getBalance(state.user.ownerId),
-        API.getAudit(state.user.ownerId),
-    ]);
+    try {
+        const [balance, audit] = await Promise.all([
+            API.getBalance(state.user.ownerId).catch(() => 0),
+            API.getAudit(state.user.ownerId).catch(() => ({ transactions: [] })),
+        ]);
 
-    state.balance = balance;
-    document.getElementById('wallet-balance').textContent = `Ƈ ${balance.toFixed(2)}`;
-    document.getElementById('wallet-balance-usd').textContent = `≈ $${(balance * 0.10).toFixed(2)} USD`;
-    document.getElementById('user-balance-sidebar').textContent = `Ƈ ${balance.toFixed(2)}`;
+        state.balance = balance;
+        document.getElementById('wallet-balance').textContent = `Ƈ ${balance.toFixed(2)}`;
+        document.getElementById('wallet-balance-usd').textContent = `≈ $${(balance * 0.10).toFixed(2)} USD`;
+        document.getElementById('user-balance-sidebar').textContent = `Ƈ ${balance.toFixed(2)}`;
 
-    const txns = audit?.transactions || [];
-    renderWalletTable('wallet-transactions', txns.reverse());
+        const txns = audit?.transactions || [];
+        renderWalletTable('wallet-transactions', txns.reverse());
+    } catch (error) {
+        console.error("Wallet refresh failed:", error);
+    }
 }
 
 function renderTransactions(containerId, transactions, compact = false) {
@@ -378,30 +393,31 @@ function renderWalletTable(containerId, transactions) {
 async function refreshAgents() {
     if (!state.user) return;
 
-    const allAgents = await API.discoverAll();
-    const myAgents = allAgents.filter(a => a.owner_id === state.user.ownerId);
+    try {
+        const allAgents = await API.discoverAll().catch(() => []);
+        const myAgents = allAgents.filter(a => a.owner_id === state.user.ownerId);
 
-    const grid = document.getElementById('my-agents-grid');
-    const placeholder = document.getElementById('agent-card-placeholder');
+        const grid = document.getElementById('my-agents-grid');
+        const placeholder = document.getElementById('agent-card-placeholder');
 
-    // Show owned agents
-    const existingCards = grid.querySelectorAll('.agent-card:not(.agent-card-empty)');
-    existingCards.forEach(c => c.remove());
+        // Show owned agents
+        const existingCards = grid.querySelectorAll('.agent-card:not(.agent-card-empty)');
+        existingCards.forEach(c => c.remove());
 
-    if (myAgents.length === 0) {
-        if (placeholder) placeholder.style.display = '';
-    } else {
-        if (placeholder) placeholder.style.display = 'none';
-        myAgents.forEach(agent => {
-            const skills = agent.skills || [];
-            const skill = skills[0] || {};
-            const rep = agent.reputation_score || 50;
-            const cost = skill.cost_per_call || 0;
-            const repStats = agent._rep_stats || {};
+        if (myAgents.length === 0) {
+            if (placeholder) placeholder.style.display = '';
+        } else {
+            if (placeholder) placeholder.style.display = 'none';
+            myAgents.forEach(agent => {
+                const skills = agent.skills || [];
+                const skill = skills[0] || {};
+                const rep = agent.reputation_score || 50;
+                const cost = skill.cost_per_call || 0;
+                const repStats = agent._rep_stats || {};
 
-            const card = document.createElement('div');
-            card.className = 'agent-card';
-            card.innerHTML = `
+                const card = document.createElement('div');
+                card.className = 'agent-card';
+                card.innerHTML = `
                 <div class="agent-card-header">
                     <div class="agent-avatar" style="background:var(--accent-glow)">🤖</div>
                     <div>
@@ -427,13 +443,16 @@ async function refreshAgents() {
                     <span class="dot"></span>
                     <span>En línea — ${agent.api_endpoint || ''}</span>
                 </div>`;
-            grid.insertBefore(card, placeholder);
-        });
-    }
+                grid.insertBefore(card, placeholder);
+            });
+        }
 
-    // Also show ALL agents the user could see
-    const otherAgents = allAgents.filter(a => a.owner_id !== state.user?.ownerId);
-    // (These will show in marketplace)
+        // Also show ALL agents the user could see
+        const otherAgents = allAgents.filter(a => a.owner_id !== state.user?.ownerId);
+        // (These will show in marketplace)
+    } catch (error) {
+        console.error("Agents refresh failed:", error);
+    }
 }
 
 // ================================================================
@@ -444,36 +463,42 @@ let allMarketAgents = [];
 let activeSkillFilter = null;
 
 async function refreshMarketplace() {
-    const [allAgents, skills] = await Promise.all([
-        API.discoverAll(),
-        API.getSkills(),
-    ]);
+    try {
+        const [allAgents, skills] = await Promise.all([
+            API.discoverAll().catch(() => []),
+            API.getSkills().catch(() => ({})),
+        ]);
 
-    allMarketAgents = allAgents;
+        allMarketAgents = allAgents;
 
-    // Render skill chips
-    const chipsContainer = document.getElementById('skills-chips');
-    chipsContainer.innerHTML = `
+        // Render skill chips
+        const chipsContainer = document.getElementById('skills-chips');
+        chipsContainer.innerHTML = `
         <button class="skill-chip active" data-skill="all">Todos</button>
         ${(skills.skills || []).map(s => `<button class="skill-chip" data-skill="${s}">${s}</button>`).join('')}
     `;
 
-    chipsContainer.querySelectorAll('.skill-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-            chipsContainer.querySelectorAll('.skill-chip').forEach(c => c.classList.remove('active'));
-            chip.classList.add('active');
-            const skill = chip.dataset.skill;
-            activeSkillFilter = skill === 'all' ? null : skill;
-            renderMarketplaceAgents(filterAgents());
+        chipsContainer.querySelectorAll('.skill-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                chipsContainer.querySelectorAll('.skill-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                const skill = chip.dataset.skill;
+                activeSkillFilter = skill === 'all' ? null : skill;
+                renderMarketplaceAgents(filterAgents());
+            });
         });
-    });
 
-    renderMarketplaceAgents(allAgents);
+        renderMarketplaceAgents(allAgents);
 
-    // Populate hire modal skill select
-    const hireSkill = document.getElementById('hire-skill');
-    hireSkill.innerHTML = `<option value="">Selecciona una habilidad...</option>` +
-        (skills.skills || []).map(s => `<option value="${s}">${s}</option>`).join('');
+        // Populate hire modal skill select
+        const hireSkill = document.getElementById('hire-skill');
+        if (hireSkill) {
+            hireSkill.innerHTML = `<option value="">Selecciona una habilidad...</option>` +
+                (skills.skills || []).map(s => `<option value="${s}">${s}</option>`).join('');
+        }
+    } catch (error) {
+        console.error("Marketplace refresh failed:", error);
+    }
 }
 
 function filterAgents() {
