@@ -7,9 +7,15 @@ const SUPABASE_KEY = 'sb_publishable_b-PO7Mk5IusgL9ymbAaShw_p5ByupTu...'; // Tru
 // Initialize the Supabase client
 let supabase;
 
-if (typeof createClient !== 'undefined') {
-    supabase = createClient(SUPABASE_URL, 'sb_publishable_b-PO7Mk5IusgL9ymbAaShw_p5ByupTu...');
-    console.log('✅ Supabase client initialized');
+if (typeof supabase !== 'undefined' && supabase.createClient) {
+    // If loaded via CDN, supabase is often on the window object
+    window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    console.log('✅ Supabase client initialized via supabase.createClient');
+} else if (window.supabase && window.supabase.createClient) {
+    // Sometimes it's window.supabase
+    window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    console.log('✅ Supabase client initialized via window.supabase.createClient');
 } else {
-    console.error('❌ Supabase library not loaded. Check index.html script tags.');
+    console.error('❌ Supabase library not loaded or createClient not found.');
+    // Fallback?
 }
