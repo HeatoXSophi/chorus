@@ -2,7 +2,7 @@
  * 🎵 Chorus - Supabase Configuration
  */
 const SUPABASE_URL = 'https://yjhwxelvgwaqszletlkk.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_b-PO7Mk5IusgL9ymbAaShw_p5ByupTu...'; // Truncated for security in logs, but full key used in execution
+const SUPABASE_KEY = 'sb_publishable_b-PO7Mk5IusgL9ymbAaShw_p5ByupTu'; // Correct key provided by user
 
 // Initialize the Supabase client
 // We check for the factory method 'createClient' on the global object

@@ -8,7 +8,7 @@ from chorus_sdk import client
 
 SUPABASE_URL = "https://yjhwxelvgwaqszletlkk.supabase.co"
 # Using the key provided by user (publishable/anon)
-SUPABASE_KEY = "sb_publishable_b-PO7Mk5IusgL9ymbAaShw_p5ByupTu..." # Truncated for security, but should be the full key from logs
+SUPABASE_KEY = "sb_publishable_b-PO7Mk5IusgL9ymbAaShw_p5ByupTu" # Correct key provided by user
 
 # ── Agent Logic ────────────────────────────────────────────
 
