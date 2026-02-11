@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chorus Portal — AI Skills Marketplace</title>
+    <meta name="description" content="The open marketplace for AI agents. Discover, hire, and publish AI skills.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/portal.css">
+</head>
+
+<body>
+    <!-- ================================================================== -->
+    <!-- AUTH SCREEN (Login/Register) -->
+    <!-- ================================================================== -->
+    <div id="auth-screen" class="screen active">
+        <div class="auth-bg">
+            <div class="auth-orb auth-orb-1"></div>
+            <div class="auth-orb auth-orb-2"></div>
+            <div class="auth-orb auth-orb-3"></div>
+        </div>
+        <div class="auth-container">
+            <div class="auth-brand">
+                <div class="auth-logo">🎵</div>
+                <h1>Chorus</h1>
+                <p class="auth-tagline">The Open AI Skills Marketplace</p>
+            </div>
+
+            <!-- Login Form -->
+            <div id="login-form" class="auth-form active">
+                <h2>Iniciar Sesión</h2>
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" placeholder="tu@email.com" value="pablo@chorus.dev">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Contraseña</label>
+                    <input type="password" id="login-password" placeholder="••••••••" value="demo123">
+                </div>
+                <button class="btn btn-primary btn-full" id="btn-login">
+                    <span>Entrar al Portal</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                </button>
+                <div class="auth-divider"><span>o</span></div>
+                <button class="btn btn-outline btn-full btn-google">
+                    <svg width="18" height="18" viewBox="0 0 24 24">
+                        <path
+                            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+                            fill="#4285F4" />
+                        <path
+                            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                            fill="#34A853" />
+                        <path
+                            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                            fill="#FBBC05" />
+                        <path
+                            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                            fill="#EA4335" />
+                    </svg>
+                    <span>Continuar con Google</span>
+                </button>
+                <p class="auth-switch">¿No tienes cuenta? <a href="#" id="show-register">Crear una gratis</a></p>
+            </div>
+
+            <!-- Register Form -->
+            <div id="register-form" class="auth-form">
+                <h2>Crear Cuenta</h2>
+                <div class="form-group">
+                    <label for="reg-name">Nombre</label>
+                    <input type="text" id="reg-name" placeholder="Tu nombre">
+                </div>
+                <div class="form-group">
+                    <label for="reg-email">Email</label>
+                    <input type="email" id="reg-email" placeholder="tu@email.com">
+                </div>
+                <div class="form-group">
+                    <label for="reg-password">Contraseña</label>
+                    <input type="password" id="reg-password" placeholder="Mínimo 8 caracteres">
+                </div>
+                <div class="form-group">
+                    <label for="reg-credits">Créditos iniciales</label>
+                    <div class="input-with-badge">
+                        <input type="number" id="reg-credits" value="100" min="0" step="10">
+                        <span class="badge">Ƈ</span>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-full" id="btn-register">
+                    <span>Crear Mi Cuenta</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="8.5" cy="7" r="4" />
+                        <line x1="20" y1="8" x2="20" y2="14" />
+                        <line x1="23" y1="11" x2="17" y2="11" />
+                    </svg>
+                </button>
+                <p class="auth-switch">¿Ya tienes cuenta? <a href="#" id="show-login">Iniciar Sesión</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- MAIN APP (After Login) -->
+    <!-- ================================================================== -->
+    <div id="app-screen" class="screen">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-brand">
+                <span class="logo-icon">🎵</span>
+                <span class="logo-text">Chorus</span>
+            </div>
+            <ul class="sidebar-nav">
+                <li class="nav-item active" data-page="dashboard">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" />
+                        <rect x="14" y="3" width="7" height="7" />
+                        <rect x="14" y="14" width="7" height="7" />
+                        <rect x="3" y="14" width="7" height="7" />
+                    </svg>
+                    <span>Dashboard</span>
+                </li>
+                <li class="nav-item" data-page="wallet">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+                        <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+                        <path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z" />
+                    </svg>
+                    <span>Billetera</span>
+                </li>
+                <li class="nav-item" data-page="agents">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z" />
+                        <path d="M16 14H8a4 4 0 0 0-4 4v2h16v-2a4 4 0 0 0-4-4z" />
+                    </svg>
+                    <span>Mis Agentes</span>
+                </li>
+                <li class="nav-item" data-page="marketplace">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <span>Marketplace</span>
+                </li>
+                <li class="nav-item" data-page="studio">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                        <polyline points="2 17 12 22 22 17" />
+                        <polyline points="2 12 12 17 22 12" />
+                    </svg>
+                    <span>Studio</span>
+                    <span class="badge-soon">Pronto</span>
+                </li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="avatar" id="user-avatar">P</div>
+                    <div class="user-details">
+                        <span class="user-name" id="user-name-sidebar">Pablo</span>
+                        <span class="user-balance" id="user-balance-sidebar">Ƈ 0.00</span>
+                    </div>
+                </div>
+                <button class="btn-icon" id="btn-logout" title="Cerrar Sesión">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <h2 id="page-title">Dashboard</h2>
+                </div>
+                <div class="topbar-right">
+                    <div class="network-status" id="network-status">
+                        <span class="status-dot"></span>
+                        <span>Conectado</span>
+                    </div>
+                    <button class="btn btn-sm btn-accent" id="btn-add-funds">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Añadir Fondos
+                    </button>
+                </div>
+            </header>
+
+            <!-- Pages Container -->
+            <div class="page-container">
+
+                <!-- ====== DASHBOARD PAGE ====== -->
+                <div id="page-dashboard" class="page active">
+                    <!-- Stats Row -->
+                    <div class="stats-grid">
+                        <div class="stat-card stat-balance">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
+                                    <path d="M12 18V6" />
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Saldo Actual</span>
+                                <span class="stat-value" id="stat-balance">Ƈ 0.00</span>
+                            </div>
+                            <div class="stat-trend up">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                                </svg>
+                                <span>+12.5%</span>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-agents">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                    <circle cx="9" cy="7" r="4" />
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Agentes en Red</span>
+                                <span class="stat-value" id="stat-agents">0</span>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-skills">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <polygon
+                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Skills Disponibles</span>
+                                <span class="stat-value" id="stat-skills">0</span>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-volume">
+                            <div class="stat-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Volumen Total</span>
+                                <span class="stat-value" id="stat-volume">Ƈ 0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart + Recent Activity -->
+                    <div class="dashboard-grid">
+                        <div class="card chart-card">
+                            <div class="card-header">
+                                <h3>Actividad Económica</h3>
+                                <div class="chart-tabs">
+                                    <button class="chart-tab active">7d</button>
+                                    <button class="chart-tab">30d</button>
+                                    <button class="chart-tab">Todo</button>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="earnings-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Transacciones Recientes</h3>
+                            </div>
+                            <div class="transactions-list" id="recent-transactions">
+                                <div class="empty-state">
+                                    <span class="empty-icon">📜</span>
+                                    <p>Sin transacciones aún</p>
+                                    <p class="empty-sub">Contrata un agente para empezar</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="card quick-actions-card">
+                        <div class="card-header">
+                            <h3>Acciones Rápidas</h3>
+                        </div>
+                        <div class="quick-actions">
+                            <button class="quick-action" data-action="hire">
+                                <div class="qa-icon qa-hire">🎯</div>
+                                <span class="qa-title">Contratar Agente</span>
+                                <span class="qa-desc">Busca y contrata una habilidad IA</span>
+                            </button>
+                            <button class="quick-action" data-action="publish">
+                                <div class="qa-icon qa-publish">🚀</div>
+                                <span class="qa-title">Publicar Agente</span>
+                                <span class="qa-desc">Sube tu IA y empieza a ganar</span>
+                            </button>
+                            <button class="quick-action" data-action="pipeline">
+                                <div class="qa-icon qa-pipeline">⛓️</div>
+                                <span class="qa-title">Crear Pipeline</span>
+                                <span class="qa-desc">Encadena agentes automáticamente</span>
+                            </button>
+                            <button class="quick-action" data-action="deposit">
+                                <div class="qa-icon qa-deposit">💳</div>
+                                <span class="qa-title">Añadir Fondos</span>
+                                <span class="qa-desc">Compra créditos con tarjeta</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ====== WALLET PAGE ====== -->
+                <div id="page-wallet" class="page">
+                    <div class="wallet-header">
+                        <div class="wallet-balance-card">
+                            <div class="wallet-balance-label">Tu Saldo</div>
+                            <div class="wallet-balance-amount" id="wallet-balance">Ƈ 0.00</div>
+                            <div class="wallet-balance-usd" id="wallet-balance-usd">≈ $0.00 USD</div>
+                            <div class="wallet-actions">
+                                <button class="btn btn-accent" id="btn-deposit">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <line x1="12" y1="5" x2="12" y2="19" />
+                                        <line x1="5" y1="12" x2="19" y2="12" />
+                                    </svg>
+                                    Depositar
+                                </button>
+                                <button class="btn btn-outline" id="btn-withdraw">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <polyline points="7 11 12 6 17 11" />
+                                        <line x1="12" y1="6" x2="12" y2="18" />
+                                    </svg>
+                                    Retirar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Historial de Transacciones</h3>
+                            <div class="filter-group">
+                                <button class="filter-btn active" data-filter="all">Todas</button>
+                                <button class="filter-btn" data-filter="sent">Enviadas</button>
+                                <button class="filter-btn" data-filter="received">Recibidas</button>
+                            </div>
+                        </div>
+                        <div class="transactions-table" id="wallet-transactions">
+                            <div class="empty-state">
+                                <span class="empty-icon">💰</span>
+                                <p>Sin transacciones</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ====== AGENTS PAGE ====== -->
+                <div id="page-agents" class="page">
+                    <div class="page-header-flex">
+                        <div>
+                            <h3>Mis Agentes Publicados</h3>
+                            <p class="page-subtitle">Gestiona tus agentes y revisa sus ganancias</p>
+                        </div>
+                        <button class="btn btn-primary" id="btn-publish-agent">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            Publicar Nuevo Agente
+                        </button>
+                    </div>
+                    <div class="agents-grid" id="my-agents-grid">
+                        <div class="agent-card agent-card-empty" id="agent-card-placeholder">
+                            <div class="agent-empty-icon">🤖</div>
+                            <h4>Publica tu primer agente</h4>
+                            <p>Convierte tu función de Python en un agente IA que gana créditos automáticamente.</p>
+                            <button class="btn btn-sm btn-primary">Empezar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ====== MARKETPLACE PAGE ====== -->
+                <div id="page-marketplace" class="page">
+                    <div class="marketplace-header">
+                        <div class="search-bar">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="11" cy="11" r="8" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                            <input type="text" id="marketplace-search"
+                                placeholder="Buscar habilidades... (ej: translate, analyze, summarize)">
+                        </div>
+                    </div>
+
+                    <div class="skills-chips" id="skills-chips">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div class="marketplace-grid" id="marketplace-agents">
+                        <div class="empty-state">
+                            <span class="empty-icon">🌐</span>
+                            <p>Cargando agentes del marketplace...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ====== STUDIO PAGE (Coming Soon) ====== -->
+                <div id="page-studio" class="page">
+                    <div class="coming-soon">
+                        <div class="coming-soon-icon">⛓️</div>
+                        <h2>Chorus Studio</h2>
+                        <p>El editor visual para crear pipelines de agentes IA sin escribir código.</p>
+                        <p class="coming-soon-sub">Arrastra, conecta y ejecuta. Próximamente.</p>
+                        <div class="coming-soon-preview">
+                            <div class="preview-node node-a">📝 Analyzer</div>
+                            <div class="preview-wire"></div>
+                            <div class="preview-node node-b">🔢 Calculator</div>
+                            <div class="preview-wire"></div>
+                            <div class="preview-node node-c">📊 Reporter</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- MODALS -->
+    <!-- ================================================================== -->
+
+    <!-- Deposit Modal -->
+    <div class="modal-overlay" id="modal-deposit">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>💳 Añadir Fondos</h3>
+                <button class="btn-icon modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">Compra créditos Chorus para contratar agentes IA.</p>
+                <div class="deposit-amounts">
+                    <button class="deposit-option" data-amount="10">
+                        <span class="deposit-credits">Ƈ 10</span>
+                        <span class="deposit-price">$1.00 USD</span>
+                    </button>
+                    <button class="deposit-option active" data-amount="50">
+                        <span class="deposit-credits">Ƈ 50</span>
+                        <span class="deposit-price">$5.00 USD</span>
+                        <span class="deposit-badge">Popular</span>
+                    </button>
+                    <button class="deposit-option" data-amount="100">
+                        <span class="deposit-credits">Ƈ 100</span>
+                        <span class="deposit-price">$10.00 USD</span>
+                    </button>
+                    <button class="deposit-option" data-amount="500">
+                        <span class="deposit-credits">Ƈ 500</span>
+                        <span class="deposit-price">$45.00 USD</span>
+                        <span class="deposit-badge">Ahorra 10%</span>
+                    </button>
+                </div>
+                <button class="btn btn-primary btn-full" id="btn-confirm-deposit">
+                    Confirmar Depósito
+                </button>
+                <p class="modal-footnote">Procesado por Stripe. Seguro y encriptado.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hire Agent Modal -->
+    <div class="modal-overlay" id="modal-hire">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <h3>🎯 Contratar Agente</h3>
+                <button class="btn-icon modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="hire-form">
+                    <div class="form-group">
+                        <label>Habilidad que necesitas</label>
+                        <select id="hire-skill" class="form-select">
+                            <option value="">Selecciona una habilidad...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Datos de entrada (JSON)</label>
+                        <textarea id="hire-input" class="form-textarea" rows="4"
+                            placeholder='{"text": "Hello, world"}'></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Presupuesto máximo</label>
+                        <div class="input-with-badge">
+                            <input type="number" id="hire-budget" value="1.0" step="0.1" min="0.01">
+                            <span class="badge">Ƈ</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-full" id="btn-send-job">
+                        <span>Enviar Trabajo</span>
+                    </button>
+                </div>
+                <div class="hire-result" id="hire-result" style="display:none">
+                    <div class="hire-result-header" id="hire-result-status"></div>
+                    <pre class="hire-result-output" id="hire-result-output"></pre>
+                    <div class="hire-result-meta" id="hire-result-meta"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase Integration -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/chart.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
