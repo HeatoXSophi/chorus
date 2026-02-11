@@ -25,53 +25,68 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function initAuth() {
     // Check if already logged in via session
-    API.getCurrentUser().then(user => {
-        if (user) {
-            const name = user.user_metadata.full_name || user.email.split('@')[0];
-            loginUserSuccess(user, name);
-        }
-    });
+    try {
+        API.getCurrentUser().then(user => {
+            if (user) {
+                const name = user.user_metadata.full_name || user.email.split('@')[0];
+                loginUserSuccess(user, name);
+            }
+        }).catch(err => console.warn("Session check failed:", err));
+    } catch (e) {
+        console.error("Auth init error:", e);
+    }
 
     // Toggle login/register
-    document.getElementById('show-register').addEventListener('click', (e) => {
+    const linkReg = document.getElementById('show-register');
+    if (linkReg) linkReg.addEventListener('click', (e) => {
         e.preventDefault();
         document.getElementById('login-form').classList.remove('active');
         document.getElementById('register-form').classList.add('active');
     });
-    document.getElementById('show-login').addEventListener('click', (e) => {
+
+    const linkLogin = document.getElementById('show-login');
+    if (linkLogin) linkLogin.addEventListener('click', (e) => {
         e.preventDefault();
         document.getElementById('register-form').classList.remove('active');
         document.getElementById('login-form').classList.add('active');
     });
 
     // Login
-    document.getElementById('btn-login').addEventListener('click', async () => {
+    const btnLogin = document.getElementById('btn-login');
+    if (btnLogin) btnLogin.addEventListener('click', async () => {
         const email = document.getElementById('login-email').value.trim();
         const password = document.getElementById('login-password').value.trim();
 
         if (!email || !password) { alert('Ingresa email y contraseña'); return; }
 
-        const btn = document.getElementById('btn-login');
-        const originalText = btn.innerHTML;
-        btn.querySelector('span').textContent = 'Conectando...';
-        btn.disabled = true;
+        const originalText = btnLogin.innerHTML;
+        btnLogin.querySelector('span').textContent = 'Conectando...';
+        btnLogin.disabled = true;
 
-        const user = await API.login(email, password);
+        try {
+            const user = await API.login(email, password);
 
-        if (user._error) {
-            alert(`Error: ${user.message}`);
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        } else {
-            const name = user.user_metadata.full_name || email.split('@')[0];
-            loginUserSuccess(user, name);
-            btn.innerHTML = originalText;
-            btn.disabled = false;
+            if (user._error) {
+                alert(`Error de inicio de sesión: ${user.message}`);
+                btnLogin.innerHTML = originalText;
+                btnLogin.disabled = false;
+            } else {
+                const name = user.user_metadata.full_name || email.split('@')[0];
+                loginUserSuccess(user, name);
+                btnLogin.innerHTML = originalText;
+                btnLogin.disabled = false;
+            }
+        } catch (error) {
+            console.error(error);
+            alert(`Error inesperado: ${error.message || error}`);
+            btnLogin.innerHTML = originalText;
+            btnLogin.disabled = false;
         }
     });
 
     // Register
-    document.getElementById('btn-register').addEventListener('click', async () => {
+    const btnRegister = document.getElementById('btn-register');
+    if (btnRegister) btnRegister.addEventListener('click', async () => {
         const name = document.getElementById('reg-name').value.trim() || 'User';
         const email = document.getElementById('reg-email').value.trim();
         const password = document.getElementById('reg-password').value.trim();
@@ -79,36 +94,53 @@ function initAuth() {
         if (!email || !password) { alert('Ingresa todos los campos'); return; }
         if (password.length < 6) { alert('La contraseña debe tener al menos 6 caracteres'); return; }
 
-        const btn = document.getElementById('btn-register');
-        const originalText = btn.innerHTML;
-        btn.querySelector('span').textContent = 'Creando cuenta...';
-        btn.disabled = true;
+        const originalText = btnRegister.innerHTML;
+        btnRegister.querySelector('span').textContent = 'Creando cuenta...';
+        btnRegister.disabled = true;
 
-        const user = await API.register(email, password, name);
+        try {
+            // 1. Register
+            const user = await API.register(email, password, name);
 
-        if (user._error) {
-            alert(`Error: ${user.message}`);
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        } else {
-            alert('¡Cuenta creada! iniciando sesión...');
-            // Auto login logic
+            if (user._error) {
+                alert(`Error de registro: ${user.message}`);
+                btnRegister.innerHTML = originalText;
+                btnRegister.disabled = false;
+                return;
+            }
+
+            // 2. Alert & Auto-login attempt
+            alert('¡Cuenta creada exitosamente! Intentando iniciar sesión...');
+
             const loggedIn = await API.login(email, password);
+
             if (!loggedIn._error) {
                 loginUserSuccess(loggedIn, name);
             } else {
+                alert("Cuenta creada. Por favor inicia sesión manual.");
                 // Switch to login
                 document.getElementById('register-form').classList.remove('active');
                 document.getElementById('login-form').classList.add('active');
             }
-            btn.innerHTML = originalText;
-            btn.disabled = false;
+
+            btnRegister.innerHTML = originalText;
+            btnRegister.disabled = false;
+
+        } catch (error) {
+            console.error(error);
+            alert(`Error de sistema: ${error.message || "No se pudo conectar con Supabase"}`);
+            btnRegister.innerHTML = originalText;
+            btnRegister.disabled = false;
         }
     });
 
     // Logout
-    document.getElementById('btn-logout').addEventListener('click', async () => {
-        await API.logout();
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) btnLogout.addEventListener('click', async () => {
+        try {
+            await API.logout();
+        } catch (e) { console.error(e); }
+
         state.user = null;
         state.balance = 0;
         state.connected = false;
@@ -118,23 +150,31 @@ function initAuth() {
 }
 
 async function loginUserSuccess(user, name) {
-    state.user = {
-        name: name,
-        email: user.email,
-        ownerId: user.id
-    };
-    state.connected = true;
+    try {
+        state.user = {
+            name: name,
+            email: user.email,
+            ownerId: user.id
+        };
+        state.connected = true;
 
-    // Switch screens
-    document.getElementById('auth-screen').classList.remove('active');
-    document.getElementById('app-screen').classList.add('active');
+        // Switch screens
+        document.getElementById('auth-screen').classList.remove('active');
+        document.getElementById('app-screen').classList.add('active');
 
-    // Update UI
-    document.getElementById('user-avatar').textContent = name[0].toUpperCase();
-    document.getElementById('user-name-sidebar').textContent = name;
+        // Update UI
+        const avatar = document.getElementById('user-avatar');
+        if (avatar) avatar.textContent = name[0].toUpperCase();
 
-    // Load dashboard
-    await refreshDashboard();
+        const nameLabel = document.getElementById('user-name-sidebar');
+        if (nameLabel) nameLabel.textContent = name;
+
+        // Load dashboard
+        await refreshDashboard();
+    } catch (e) {
+        console.error("Login UI update failed:", e);
+        alert("Error cargando el dashboard.");
+    }
 }
 
 // ================================================================
