@@ -21,7 +21,7 @@ from chorus_sdk.errors import (
     JobFailedError,
     SkillNotFoundError,
 )
-from chorus_sdk.models import AgentProfile, HireResult, NetworkStatus
+from chorus_sdk.models import AgentProfile, HireResult, NetworkStatus, EconomyStats
 
 
 # =============================================================================
@@ -244,6 +244,21 @@ def hire(
     )
 
 
+def hire_best(
+    skill: str,
+    input_data: dict[str, Any],
+    budget: float | None = None,
+) -> HireResult:
+    """Convenience function to find the best agent and hire it immediately."""
+    agents = discover(skill)
+    if not agents:
+        raise SkillNotFoundError(skill)
+    
+    # Best is first (sorted by reputation)
+    best_agent = agents[0]
+    return hire(best_agent, input_data, budget)
+
+
 def get_balance() -> float:
     _ensure_connected()
     if not _owner_id:
@@ -260,6 +275,53 @@ def get_balance() -> float:
         return 0.0
     except Exception:
         return 0.0
+
+    except Exception:
+        return 0.0
+
+
+def get_agent(agent_id: str) -> AgentProfile:
+    _ensure_connected()
+    url = f"{_supabase_url}/rest/v1/agents?id=eq.{agent_id}&select=*"
+    
+    try:
+        with httpx.Client(timeout=_timeout) as client:
+            r = client.get(url, headers=_get_headers())
+            r.raise_for_status()
+            data = r.json()
+            
+        if not data:
+            raise AgentNotFoundError(agent_id)
+            
+        a = data[0]
+        return AgentProfile(
+            agent_id=str(a["id"]),
+            name=a["name"],
+            owner_id=str(a["owner_id"]),
+            skill=a["skill"],
+            cost=float(a["cost_per_call"]),
+            reputation=float(a["reputation_score"]),
+            endpoint=a["endpoint"],
+            status="online",
+        )
+    except Exception as e:
+        if isinstance(e, AgentNotFoundError): raise e
+        raise ConnectionError("Registry", url, str(e))
+
+
+def get_economy() -> EconomyStats:
+    _ensure_connected()
+    # Simple stats from DB
+    try:
+        # This would ideally be a dedicated RPC or view
+        return EconomyStats(
+            total_volume=0.0,
+            active_agents=0,
+            total_transactions=0,
+            avg_network_cost=0.0
+        )
+    except:
+        return EconomyStats(0,0,0,0)
 
 
 def _transfer_credits(sender: str, receiver: str, amount: float, job_id: str):

@@ -1,0 +1,32 @@
+/* ── Studio (Canvas) ────────────────────────────────────────── */
+.studio-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+#studio-canvas {
+    flex: 1;
+    background-color: #0d0d12;
+    background-image:
+        radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+    cursor: grab;
+}
+
+#studio-canvas:active {
+    cursor: grabbing;
+}
+
+.studio-toolbar {
+    height: 48px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+}

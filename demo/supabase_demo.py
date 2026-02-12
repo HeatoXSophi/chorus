@@ -28,19 +28,16 @@ def calc_handler(data):
 def main():
     print("🚀 Connecting to Chorus Network (Supabase)...")
     
-    # In a real app, don't hardcode credentials!
-    email = input("Enter your email: ")
+    # 1. Credentials
+    print("\n--- Login ---")
+    email = input("Enter your email (used in Portal): ")
     password = input("Enter your password: ")
     
-    # We need the full key. Since I don't have it here (truncated in logs), 
-    # I'll ask the user to input it or set it as env var.
-    # OR, for this demo script, I'll rely on the user to paste it.
-    key = input("Enter Supabase Anon Key (sb_publishable_...): ")
-    
+    # 2. Connect
     try:
         status = chorus.connect(
             supabase_url=SUPABASE_URL,
-            supabase_key=key,
+            supabase_key=SUPABASE_KEY,
             email=email,
             password=password
         )
