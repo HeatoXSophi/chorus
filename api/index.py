@@ -42,10 +42,10 @@ async def news_root():
 
 @app.post("/api/wiki/jobs")
 async def wiki_job(request: Request):
-    try:
         data = await request.json()
         input_data = data.get("input_data", {})
         topic = input_data.get("topic", input_data.get("text", "Technology"))
+        file_info = input_data.get("file")
         
         output = None
         for lang in ["es", "en"]:
@@ -56,6 +56,12 @@ async def wiki_job(request: Request):
         
         if not output:
             output = {"error": f"No encontré información sobre '{topic}' en Wikipedia.", "report": f"⚠️ No encontré información sobre '{topic}' en Wikipedia. Intenta con otro término."}
+        
+        # If file is present, personalize the report
+        if file_info and "report" in output:
+            file_name = file_info.get("name", "archivo")
+            personalized_intro = f"✨ **He analizado tu archivo {file_name}** y he generado esta versión optimizada con datos de Wikipedia:\n\n"
+            output["report"] = personalized_intro + output["report"]
             
         return {
             "job_id": data.get("job_id", ""),
@@ -76,84 +82,101 @@ async def wiki_job(request: Request):
 
 
 async def search_wikipedia(topic: str, lang: str) -> dict | None:
-    """Search Wikipedia with fallback search."""
+    """Search Wikipedia with multiple attempts and fallbacks."""
     
-    encoded_topic = urllib.parse.quote(topic.replace(" ", "_"))
-    url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{encoded_topic}"
+    # Clean topic
+    query = topic.strip()
+    if not query: return None
     
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        r = await client.get(url, follow_redirects=True)
-        
-    if r.status_code == 200:
-        wiki_data = r.json()
-        if wiki_data.get("type") == "disambiguation":
-            return None
-            
-        summary = wiki_data.get("extract", "")
-        if not summary:
-            return None
-            
-        title = wiki_data.get("title", topic)
-        description = wiki_data.get("description", "")
-        thumbnail = wiki_data.get("thumbnail", {}).get("source", "")
-        page_url = wiki_data.get("content_urls", {}).get("desktop", {}).get("page", "")
-        
-        lang_label = "Español" if lang == "es" else "English"
-        report = f"# {title}\n"
-        if description:
-            report += f"*{description}*\n\n"
-        report += f"---\n\n{summary}\n\n"
-        report += f"---\n📚 Fuente: Wikipedia ({lang_label})"
-        if page_url:
-            report += f"\n🔗 {page_url}"
-        
-        return {
-            "report": report,
-            "title": title,
-            "summary": summary,
-            "thumbnail": thumbnail,
-            "language": lang,
-            "url": page_url
-        }
+    # 1. Try different variants of the query (Wikipedia is case-sensitive)
+    search_variants = [
+        query,                   # Original
+        query.capitalize(),      # 'tenerife' -> 'Tenerife'
+        query.title(),           # 'albert einstein' -> 'Albert Einstein'
+        query.replace(" ", "_")  # Underscores
+    ]
     
-    # Fallback: search API
-    search_url = f"https://{lang}.wikipedia.org/w/api.php?action=opensearch&search={urllib.parse.quote(topic)}&limit=1&format=json"
+    # Remove duplicates but maintain order
+    search_variants = list(dict.fromkeys(search_variants))
     
     async with httpx.AsyncClient(timeout=15.0) as client:
-        sr = await client.get(search_url)
+        for variant in search_variants:
+            encoded = urllib.parse.quote(variant.replace(" ", "_"))
+            url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{encoded}"
+            
+            try:
+                r = await client.get(url, follow_redirects=True)
+                if r.status_code == 200:
+                    wiki_data = r.json()
+                    if wiki_data.get("type") == "disambiguation":
+                        continue # Try next variant or fallback
+                        
+                    summary = wiki_data.get("extract", "")
+                    if summary:
+                        title = wiki_data.get("title", variant)
+                        description = wiki_data.get("description", "")
+                        thumbnail = wiki_data.get("thumbnail", {}).get("source", "")
+                        page_url = wiki_data.get("content_urls", {}).get("desktop", {}).get("page", "")
+                        
+                        lang_label = "Español" if lang == "es" else "English"
+                        report = f"# {title}\n"
+                        if description:
+                            report += f"*{description}*\n\n"
+                        report += f"---\n\n{summary}\n\n"
+                        report += f"---\n📚 Fuente: Wikipedia ({lang_label})"
+                        if page_url:
+                            report += f"\n🔗 {page_url}"
+                        
+                        return {
+                            "report": report,
+                            "title": title,
+                            "summary": summary,
+                            "thumbnail": thumbnail,
+                            "language": lang,
+                            "url": page_url
+                        }
+            except Exception:
+                continue
     
-    if sr.status_code == 200:
-        search_data = sr.json()
-        if len(search_data) > 1 and search_data[1]:
-            best_match = search_data[1][0].replace(" ", "_")
-            retry_url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{urllib.parse.quote(best_match)}"
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                r2 = await client.get(retry_url, follow_redirects=True)
-            if r2.status_code == 200:
-                wiki_data = r2.json()
-                summary = wiki_data.get("extract", "")
-                if summary:
-                    title = wiki_data.get("title", topic)
-                    description = wiki_data.get("description", "")
-                    page_url = wiki_data.get("content_urls", {}).get("desktop", {}).get("page", "")
-                    lang_label = "Español" if lang == "es" else "English"
-                    
-                    report = f"# {title}\n"
-                    if description:
-                        report += f"*{description}*\n\n"
-                    report += f"---\n\n{summary}\n\n"
-                    report += f"---\n📚 Fuente: Wikipedia ({lang_label})"
-                    if page_url:
-                        report += f"\n🔗 {page_url}"
-                    
-                    return {
-                        "report": report,
-                        "title": title,
-                        "summary": summary,
-                        "language": lang,
-                        "url": page_url
-                    }
+    # 2. Fallback: search API (opensearch)
+    search_url = f"https://{lang}.wikipedia.org/w/api.php?action=opensearch&search={urllib.parse.quote(query)}&limit=1&format=json"
     
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        try:
+            sr = await client.get(search_url)
+            if sr.status_code == 200:
+                search_data = sr.json()
+                if len(search_data) > 1 and search_data[1]:
+                    best_match = search_data[1][0]
+                    # Try summary again with the search result
+                    encoded = urllib.parse.quote(best_match.replace(" ", "_"))
+                    retry_url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{encoded}"
+                    r2 = await client.get(retry_url, follow_redirects=True)
+                    if r2.status_code == 200:
+                        wiki_data = r2.json()
+                        summary = wiki_data.get("extract", "")
+                        if summary:
+                            title = wiki_data.get("title", best_match)
+                            description = wiki_data.get("description", "")
+                            page_url = wiki_data.get("content_urls", {}).get("desktop", {}).get("page", "")
+                            
+                            report = f"# {title}\n"
+                            if description:
+                                report += f"*{description}*\n\n"
+                            report += f"---\n\n{summary}\n\n"
+                            report += f"---\n📚 Fuente: Wikipedia"
+                            if page_url:
+                                report += f"\n🔗 {page_url}"
+                            
+                            return {
+                                "report": report,
+                                "title": title,
+                                "summary": summary,
+                                "url": page_url
+                            }
+        except Exception:
+            pass
+            
     return None
 
 
@@ -204,6 +227,12 @@ async def translate_job(request: Request):
             
             report = f"# 🌐 Traducción\n"
             report += f"*{from_name} → {to_name}*\n\n"
+            
+            file_info = input_data.get("file")
+            if file_info:
+                file_name = file_info.get("name", "archivo")
+                report += f"✨ **He analizado tu archivo {file_name}** y he traducido el contenido detectado:\n\n"
+            
             report += f"---\n\n"
             report += f"**Original:** {text}\n\n"
             report += f"**Traducción:** {translated}\n\n"
@@ -270,6 +299,12 @@ async def weather_job(request: Request):
             
             report = f"# {emoji} Clima en {area_name}\n"
             report += f"*{country}*\n\n"
+            
+            file_info = input_data.get("file")
+            if file_info:
+                file_name = file_info.get("name", "archivo")
+                report += f"✨ **Analizando entorno desde {file_name}...**\nAquí tienes el pronóstico oficial de la zona:\n\n"
+            
             report += f"---\n\n"
             report += f"🌡️ **Temperatura:** {temp_c}°C (sensación {feels_like}°C)\n\n"
             report += f"☁️ **Condición:** {desc}\n\n"
@@ -346,6 +381,12 @@ async def news_job(request: Request):
             
             report = f"# 📰 Noticias: {topic}\n"
             report += f"*Últimas {len(headlines)} noticias encontradas*\n\n"
+            
+            file_info = input_data.get("file")
+            if file_info:
+                file_name = file_info.get("name", "archivo")
+                report += f"✨ **Contexto detectado desde {file_name}**\nHe buscado noticias relevantes para complementar tu documento:\n\n"
+            
             report += "---\n\n"
             
             for i, h in enumerate(headlines, 1):

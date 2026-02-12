@@ -645,6 +645,45 @@ function initModals() {
             await executeHireJob();
         }
     });
+
+    // File selection handler
+    document.getElementById('hire-file-input')?.addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (event) {
+            const base64 = event.target.result;
+            window._uploadedFile = {
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                data: base64
+            };
+
+            // Show preview
+            const preview = document.getElementById('file-preview');
+            const content = document.getElementById('file-preview-content');
+            preview.style.display = 'block';
+
+            let previewHtml = '';
+            if (file.type.startsWith('image/')) {
+                previewHtml = `<img src="${base64}" style="width:40px; height:40px; object-fit:cover; border-radius:6px;">`;
+            } else {
+                const icon = file.type.includes('pdf') ? '📕' : file.type.includes('word') ? '📘' : '📄';
+                previewHtml = `<span style="font-size:24px;">${icon}</span>`;
+            }
+
+            content.innerHTML = `
+                ${previewHtml}
+                <div style="display:flex; flex-direction:column; gap:2px;">
+                    <span style="font-size:12px; color:var(--text-primary); font-weight:600; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${file.name}</span>
+                    <span style="font-size:10px; color:var(--text-secondary);">${(file.size / 1024).toFixed(1)} KB</span>
+                </div>
+            `;
+        };
+        reader.readAsDataURL(file);
+    });
 }
 
 function openModal(id) { document.getElementById(id)?.classList.add('active'); }
@@ -706,6 +745,35 @@ function getSkillEmoji(skill) {
 function getSkillLabel(skill) {
     const map = { research: 'WikiCloud', translate: 'TranslatorBot', weather: 'WeatherBot', news: 'NewsScanner' };
     return map[skill] || 'Agente';
+}
+
+function getAgentWelcome(skill, agentName) {
+    const welcomes = {
+        research: `¡Hola! 👋 Soy <strong>${agentName || 'WikiCloud'}</strong>, tu agente de investigación.
+            <br><br>Escribe cualquier tema y buscaré información detallada en Wikipedia.
+            <br><br><strong>Ejemplos:</strong><br>
+            🔍 "Bitcoin" — Criptomonedas<br>
+            🔍 "Tenerife" — Geografía<br>
+            🔍 "Albert Einstein" — Ciencia`,
+        translate: `¡Hola! 👋 Soy <strong>${agentName || 'TranslatorBot'}</strong>, tu traductor automático.
+            <br><br>Escribe texto en cualquier idioma y lo traduciré automáticamente.
+            <br><br><strong>Ejemplos:</strong><br>
+            🌐 "Hello world" → Español<br>
+            🌐 "Buenos días amigo" → English`,
+        weather: `¡Hola! 👋 Soy <strong>${agentName || 'WeatherBot'}</strong>, tu agente del clima.
+            <br><br>Escribe el nombre de cualquier ciudad y te daré el clima actual.
+            <br><br><strong>Ejemplos:</strong><br>
+            ⛅ "Madrid"<br>
+            ⛅ "New York"<br>
+            ⛅ "Tokio"`,
+        news: `¡Hola! 👋 Soy <strong>${agentName || 'NewsScanner'}</strong>, tu buscador de noticias.
+            <br><br>Escribe cualquier tema y buscaré las últimas noticias.
+            <br><br><strong>Ejemplos:</strong><br>
+            📰 "Inteligencia artificial"<br>
+            📰 "Fútbol"<br>
+            📰 "Economía"`
+    };
+    return welcomes[skill] || `¡Hola! 👋 Soy <strong>${agentName || 'un agente Chorus'}</strong>. Escribe lo que necesitas y te ayudaré.`;
 }
 
 function addChatBubble(type, content) {
@@ -829,25 +897,27 @@ function rateJob(jobId, rating) {
 async function hireFromMarketplace(agentId, skillName, endpoint, ownerId) {
     openModal('modal-hire');
 
-    // Reset chat to welcome message only
+    const agentName = getSkillLabel(skillName);
+    const welcomeMsg = getAgentWelcome(skillName, agentName);
+
+    // Reset chat with agent-specific welcome message
     const chatArea = document.getElementById('chat-messages');
     chatArea.innerHTML = `
         <div class="chat-bubble agent">
-            <div class="bubble-content">
-                ¡Hola! 👋 Soy tu asistente Chorus. Escribe lo que necesitas y encontraré al mejor agente para ayudarte.
-                <br><br>
-                <strong>Prueba escribir:</strong><br>
-                🔍 "Bitcoin" — Investigación Wikipedia<br>
-                🌐 "Translate: Hello world" — Traducción<br>
-                ⛅ "Clima en Madrid" — Pronóstico<br>
-                📰 "Noticias de tecnología" — Noticias
-            </div>
+            <div class="bubble-content">${welcomeMsg}</div>
         </div>
     `;
 
     // Pre-set skill if coming from marketplace card
     document.getElementById('hire-skill').value = skillName || '';
     document.getElementById('hire-input').value = '';
+
+    // Reset file upload
+    const fileInput = document.getElementById('hire-file-input');
+    if (fileInput) fileInput.value = '';
+    const filePreview = document.getElementById('file-preview');
+    if (filePreview) filePreview.style.display = 'none';
+    window._uploadedFile = null;
 
     // Focus input after modal animation
     setTimeout(() => document.getElementById('hire-input').focus(), 400);
@@ -856,7 +926,7 @@ async function hireFromMarketplace(agentId, skillName, endpoint, ownerId) {
     const nameEl = document.getElementById('chat-agent-name');
     const avatarEl = document.getElementById('chat-agent-avatar');
     if (nameEl && skillName) {
-        nameEl.textContent = getSkillLabel(skillName);
+        nameEl.textContent = agentName;
         avatarEl.textContent = getSkillEmoji(skillName);
     }
 
@@ -902,6 +972,11 @@ async function executeHireJob() {
     btn.disabled = true;
 
     const inputData = { topic: searchText };
+    if (window._uploadedFile) {
+        inputData.file = window._uploadedFile;
+        // Optionally add a mention of the file in the chat
+        addChatBubble('user', `📎 Adjunto: ${window._uploadedFile.name}`);
+    }
 
     try {
         // Discover agents with this skill
@@ -932,6 +1007,13 @@ async function executeHireJob() {
         const result = await API.sendJob(endpoint, skill, inputData, budget);
 
         removeTypingIndicator();
+
+        // Reset file upload
+        window._uploadedFile = null;
+        const preview = document.getElementById('file-preview');
+        if (preview) preview.style.display = 'none';
+        const fileInput = document.getElementById('hire-file-input');
+        if (fileInput) fileInput.value = '';
 
         if (result && result.status === 'SUCCESS') {
             const outputData = result.output_data || {};
