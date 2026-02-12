@@ -25,7 +25,10 @@ const studio = {
         nodeBorder: '#3b82f6',
         text: '#ffffff',
         connector: '#5a5a70',
-        connectorActive: '#7c5cfc'
+        connectorActive: '#7c5cfc',
+        running: '#facc15', // Yellow
+        success: '#4ade80', // Green
+        error: '#f87171'    // Red
     },
 
     init() {
@@ -48,6 +51,16 @@ const studio = {
         // Handle Drag & Drop from Sidebar
         this.canvas.addEventListener('dragover', (e) => e.preventDefault());
         this.canvas.addEventListener('drop', (e) => this.handleDrop(e));
+
+        // Toolbar Buttons
+        const btnRun = document.getElementById('btn-studio-run');
+        if (btnRun) btnRun.addEventListener('click', () => this.runPipeline());
+
+        const btnSave = document.getElementById('btn-studio-save');
+        if (btnSave) btnSave.addEventListener('click', () => this.saveGraph());
+
+        const btnConfirmRun = document.getElementById('btn-confirm-run');
+        if (btnConfirmRun) btnConfirmRun.addEventListener('click', () => this.executePipeline());
 
         // Initialize Palette Dragging
         document.querySelectorAll('.palette-item').forEach(item => {
@@ -124,6 +137,162 @@ const studio = {
             container.innerHTML = `<div style="padding:10px; color:red; font-size:11px">Failed to load agents</div>`;
             console.error(err);
         }
+    },
+
+    // ── Execution Engine ─────────────────────────────────────────────
+
+    runPipeline() {
+        const modal = document.getElementById('modal-run');
+        if (modal) modal.classList.add('active');
+    },
+
+    async executePipeline() {
+        // 1. Close Modal & Get Input
+        const modal = document.getElementById('modal-run');
+        const inputRaw = document.getElementById('run-input').value;
+        modal.classList.remove('active');
+
+        let inputData;
+        try {
+            inputData = inputRaw.trim().startsWith('{') ? JSON.parse(inputRaw) : { text: inputRaw };
+        } catch (e) {
+            inputData = { text: inputRaw };
+        }
+
+        // 2. Find Start Node (First node created or one without inputs)
+        // For now, let's just take the first one in the array as "Start" or seek root.
+        const startNode = this.getStartNode();
+        if (!startNode) {
+            alert("No hay nodos para ejecutar.");
+            return;
+        }
+
+        console.log("🚀 Starting Pipeline...", startNode);
+
+        // Open Result Modal
+        const resModal = document.getElementById('modal-result');
+        const stepsContainer = document.getElementById('pipeline-steps');
+        const finalOutput = document.getElementById('pipeline-output');
+
+        if (resModal) resModal.classList.add('active');
+        stepsContainer.innerHTML = '';
+        finalOutput.innerText = 'Ejecutando...';
+
+        // 3. Execution Loop
+        let currentNode = startNode;
+        let currentInput = inputData;
+        let stepCount = 1;
+
+        this.resetExecutionState();
+
+        while (currentNode) {
+            // Visual Interaction
+            currentNode.status = 'running';
+            this.render();
+
+            // Add Step to UI
+            const stepId = `step-${stepCount}`;
+            stepsContainer.innerHTML += `
+                <div class="step-item" id="${stepId}">
+                    <div class="step-header">
+                        <span class="step-num">${stepCount}</span>
+                        <span class="step-agent">${currentNode.label}</span>
+                        <span class="step-status">⏳</span>
+                    </div>
+                </div>`;
+
+            // Execute Agent
+            try {
+                // Find agent endpoint (real lookup needed in future, for now mock/demo)
+                // If it's a real marketplace agent, we need its endpoint from the ID?
+                // For this demo, we can just use the 'skill' or assume it's one of our local demo agents if applicable.
+
+                // Let's use the API.sendJob logic
+                // But wait, the node might not have the full endpoint url if dragged from palette?
+                // The palette data had 'agentId'. We might need to fetch details or assume endpoint structure.
+
+                // HACK for Demo: If label has "Echo", route to EchoBot. If "Calc", route to SuperCalc.
+                // In production, we'd look up the agent's endpoint by ID.
+                let endpoint = "http://localhost:8000"; // Default to local demo
+                let skill = "unknown";
+
+                if (currentNode.label.includes("Echo")) {
+                    endpoint = "http://localhost:54321"; // Changes per port assignment in demo
+                    skill = "echo";
+                } else if (currentNode.label.includes("Calc")) {
+                    endpoint = "http://localhost:54321";
+                    skill = "calculator";
+                } else {
+                    // Fallback to what we have in DB if possible? 
+                    // For now let's try to infer from data attributes if we stored them (we didn't store endpoint yet in node)
+                    // Let's just simulate specific agents for the "Show"
+                    endpoint = "http://localhost:8000";
+                }
+
+                // If we are strictly using the supabase_demo.py agents:
+                // They run on random ports. The studio doesn't know them easily unless we query Registry.
+                // Let's query registry for this agent name to get endpoint!
+                const { agents } = await api.discover(null); // Fetch all online
+                const agentData = agents.find(a => a.agent_name === currentNode.label || currentNode.label.includes(a.agent_name));
+
+                if (agentData) {
+                    endpoint = agentData.api_endpoint;
+                    skill = agentData.skills[0].skill_name;
+                }
+
+                console.log(`Sending job to ${currentNode.label} (${endpoint})...`);
+
+                const result = await api.sendJob(endpoint, skill, currentInput, 10.0);
+
+                // Update UI Step
+                const stepEl = document.getElementById(stepId);
+
+                if (result.status === 'SUCCESS') {
+                    currentNode.status = 'success';
+                    currentInput = result.output_data; // Output becomes next Input
+
+                    stepEl.classList.add('success');
+                    stepEl.querySelector('.step-status').innerText = '✅';
+                    stepEl.innerHTML += `<div class="step-output">${JSON.stringify(result.output_data)}</div>`;
+                } else {
+                    throw new Error(result.error_message || "Unknown Error");
+                }
+
+            } catch (err) {
+                currentNode.status = 'error';
+                console.error(err);
+                document.getElementById(stepId).innerHTML += `<div class="step-error">${err.message}</div>`;
+                finalOutput.innerText = "❌ Pipeline Failed";
+                this.render();
+                return; // Stop execution
+            }
+
+            this.render();
+            stepCount++;
+
+            // Find Next Node
+            const connection = this.connections.find(c => c.from === currentNode.id);
+            if (connection) {
+                currentNode = this.nodes.find(n => n.id === connection.to);
+            } else {
+                currentNode = null; // End of line
+            }
+
+            // Artificial delay for visual effect
+            await new Promise(r => setTimeout(r, 1000));
+        }
+
+        finalOutput.innerText = JSON.stringify(currentInput, null, 2);
+    },
+
+    getStartNode() {
+        // A node is a start node if it has NO incoming connections.
+        return this.nodes.find(n => !this.connections.some(c => c.to === n.id));
+    },
+
+    resetExecutionState() {
+        this.nodes.forEach(n => delete n.status);
+        this.render();
     },
 
     resize() {
@@ -289,12 +458,20 @@ const studio = {
 
         // Border
         ctx.shadowColor = 'transparent'; // Reset shadow for border
-        ctx.strokeStyle = this.colors.nodeBorder;
-        ctx.lineWidth = 2;
+
+        // Status Colors
+        if (node.status === 'running') ctx.strokeStyle = this.colors.running;
+        else if (node.status === 'success') ctx.strokeStyle = this.colors.success;
+        else if (node.status === 'error') ctx.strokeStyle = this.colors.error;
+        else ctx.strokeStyle = this.colors.nodeBorder;
+
+        ctx.lineWidth = node.status ? 4 : 2; // Thicker if active
         ctx.stroke();
 
         // Header (Top bar)
-        ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
+        ctx.fillStyle = nodeId === this.wiringState?.sourceNodeId ? 'rgba(124, 92, 252, 0.3)' : 'rgba(59, 130, 246, 0.1)';
+        if (node.status === 'running') ctx.fillStyle = 'rgba(250, 204, 21, 0.2)';
+
         ctx.beginPath();
         ctx.roundRect(x, y, w, 30, [r, r, 0, 0]);
         ctx.fill();

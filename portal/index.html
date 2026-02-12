@@ -568,6 +568,54 @@
     </div>
 
     <!-- Supabase Integration -->
+    <!-- Run Workflow Modal -->
+    <div class="modal-overlay" id="modal-run">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>▶️ Ejecutar Pipeline</h3>
+                <button class="btn-icon modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">Introduce los datos iniciales para el primer agente.</p>
+                <div class="form-group">
+                    <label>Tu instrucción (Input)</label>
+                    <textarea id="run-input" class="form-textarea" rows="4"
+                        placeholder='Ej: "Analiza el sentimiento de este texto..." o {"text": "Hola mundo"}'></textarea>
+                </div>
+                <div class="run-footer">
+                    <button class="btn btn-primary btn-full" id="btn-confirm-run">
+                        <span>Lanzar Ejecución</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Execution Result Modal -->
+    <div class="modal-overlay" id="modal-result">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <h3>✨ Resultado del Pipeline</h3>
+                <button class="btn-icon modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="pipeline-steps" id="pipeline-steps">
+                    <!-- Dynamic Steps -->
+                </div>
+                <div class="pipeline-final">
+                    <h4>Output Final</h4>
+                    <pre id="pipeline-output"></pre>
+                </div>
+                <button class="btn btn-outline btn-full modal-close">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase Integration -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/api.js"></script>
