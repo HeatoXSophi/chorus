@@ -96,7 +96,8 @@ def connect(
         # Try to parse content-range for count if available, or just assume online
         cr = r.headers.get("Content-Range")
         if cr:
-             agents_count = int(cr.split("/")[-1])
+             part = cr.split("/")[-1]
+             agents_count = int(part) if part != "*" else 0
         
     except Exception as e:
         raise ConnectionError("Supabase", _supabase_url, str(e))

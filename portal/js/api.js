@@ -88,6 +88,7 @@ const API = {
             agent_id: a.id,
             agent_name: a.name,
             owner_id: a.owner_id,
+            description: a.description,
             api_endpoint: a.endpoint,
             reputation_score: a.reputation_score,
             skills: [{ skill_name: a.skill, cost_per_call: a.cost_per_call }]
@@ -98,6 +99,13 @@ const API = {
 
     async discoverAll() {
         return (await this.discover(null)).agents;
+    },
+
+    agents: {
+        async list() {
+            const { data, error } = await supabase.from('agents').select('*').order('reputation_score', { ascending: false });
+            return { data, error };
+        }
     },
 
     // ── Ledger (Accounts) ────────────────────────────────────

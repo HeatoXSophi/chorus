@@ -556,6 +556,9 @@ function renderMarketplaceAgents(agents) {
                     </div>
                 </div>
                 <div class="agent-skill-badge">${skill.skill_name || 'N/A'}</div>
+                <p class="mp-desc" style="font-size:12px; color:#aaa; margin:10px 0; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">
+                    ${agent.description || "Sin descripción disponible."}
+                </p>
                 <div class="mp-footer">
                     <span class="mp-cost">Ƈ ${cost.toFixed(2)}</span>
                     <div class="mp-rep">

@@ -117,8 +117,11 @@ const studio = {
                 item.innerHTML = `
                     <span class="p-icon">🤖</span>
                     <div class="p-info">
-                        <span class="p-label">${agent.name}</span>
-                        <div class="p-price">${agent.cost_per_task || 0}</div>
+                        <span class="p-label" title="${agent.name}">${agent.name}</span>
+                        <small style="display:block; font-size:10px; color:#aaa; margin-bottom:4px; max-width:110px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${agent.description || ''}">
+                            ${agent.description || "No description"}
+                        </small>
+                        <div class="p-price">${agent.cost_per_call || 0}</div>
                     </div>
                 `;
 
