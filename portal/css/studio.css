@@ -29,4 +29,72 @@
     align-items: center;
     padding: 0 16px;
     gap: 12px;
+    z-index: 20;
+}
+
+/* ── Floating Palette ───────────────────────────────────────── */
+.studio-palette {
+    position: absolute;
+    top: 64px;
+    /* below toolbar + padding */
+    left: 16px;
+    width: 220px;
+    bottom: 16px;
+    background: rgba(26, 26, 36, 0.9);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+    padding: 12px;
+    gap: 16px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+.palette-section-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.palette-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.palette-item {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    cursor: grab;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    user-select: none;
+}
+
+.palette-item:hover {
+    border-color: var(--accent);
+    transform: translateX(2px);
+    background: var(--bg-hover);
+}
+
+.palette-item:active {
+    cursor: grabbing;
+}
+
+.p-icon {
+    font-size: 16px;
+}
+
+.p-label {
+    font-size: 13px;
+    font-weight: 500;
 }

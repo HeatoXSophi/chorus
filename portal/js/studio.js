@@ -9,6 +9,10 @@ const studio = {
     nodes: [],
     connections: [],
 
+    // State
+    draggingNode: null,
+    dragOffset: { x: 0, y: 0 },
+
     // Config
     nodeWidth: 160,
     nodeHeight: 80,
@@ -31,6 +35,25 @@ const studio = {
         window.addEventListener('resize', () => this.resize());
         this.resize();
 
+        // Handle Interactions
+        this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+        this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+        this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+        this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+        this.canvas.addEventListener('mouseleave', (e) => this.handleMouseUp(e));
+
+        // Handle Drag & Drop from Sidebar
+        this.canvas.addEventListener('dragover', (e) => e.preventDefault());
+        this.canvas.addEventListener('drop', (e) => this.handleDrop(e));
+
+        // Initialize Palette Dragging
+        document.querySelectorAll('.palette-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('type', item.dataset.type);
+                e.dataTransfer.setData('label', item.dataset.label);
+            });
+        });
+
         // Initial Data (The "Hello World" requested)
         this.nodes = [
             { id: 'a', label: '📝 Agent A', x: 100, y: 100 },
@@ -50,6 +73,75 @@ const studio = {
         const parent = this.canvas.parentElement;
         this.canvas.width = parent.clientWidth;
         this.canvas.height = parent.clientHeight;
+        this.render();
+    },
+
+    // ── Interaction ──────────────────────────────────────────────────
+
+    getMousePos(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        return {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+        };
+    },
+
+    handleMouseDown(e) {
+        const pos = this.getMousePos(e);
+
+        // Check if clicking a node (reverse iteration to pick top-most)
+        for (let i = this.nodes.length - 1; i >= 0; i--) {
+            const node = this.nodes[i];
+            if (
+                pos.x >= node.x &&
+                pos.x <= node.x + this.nodeWidth &&
+                pos.y >= node.y &&
+                pos.y <= node.y + this.nodeHeight
+            ) {
+                this.draggingNode = node;
+                this.dragOffset = {
+                    x: pos.x - node.x,
+                    y: pos.y - node.y
+                };
+                return;
+            }
+        }
+    },
+
+    handleMouseMove(e) {
+        if (!this.draggingNode) return;
+
+        const pos = this.getMousePos(e);
+        this.draggingNode.x = pos.x - this.dragOffset.x;
+        this.draggingNode.y = pos.y - this.dragOffset.y;
+
+        this.render();
+    },
+
+    handleMouseUp(e) {
+        this.draggingNode = null;
+    },
+
+    handleDrop(e) {
+        e.preventDefault();
+        const pos = this.getMousePos(e);
+        const type = e.dataTransfer.getData('type');
+        const label = e.dataTransfer.getData('label');
+
+        if (type && label) {
+            this.addNode(pos.x, pos.y, label, type);
+        }
+    },
+
+    addNode(x, y, label, type) {
+        const id = Math.random().toString(36).substr(2, 9);
+        this.nodes.push({
+            id,
+            x,
+            y,
+            label,
+            type
+        });
         this.render();
     },
 
