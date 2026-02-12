@@ -68,6 +68,60 @@ const studio = {
         // Start Loop
         this.render();
         console.log("🎨 Studio initialized with Canvas API");
+
+        // Fetch Real Agents
+        this.fetchAgents();
+    },
+
+    async fetchAgents() {
+        const container = document.getElementById('palette-agents');
+        if (!container) return;
+
+        try {
+            // Wait a bit for API to be ready if needed, or check window.api
+            if (!window.api) {
+                console.warn("API not found, retrying in 1s...");
+                setTimeout(() => this.fetchAgents(), 1000);
+                return;
+            }
+
+            const { data, error } = await api.agents.list();
+            if (error) throw error;
+
+            container.innerHTML = ''; // Clear loading
+
+            data.forEach(agent => {
+                const item = document.createElement('div');
+                item.className = 'palette-item';
+                item.draggable = true;
+                item.dataset.type = 'agent';
+                item.dataset.label = agent.name;
+                item.dataset.price = agent.cost_per_task || 0;
+                item.dataset.id = agent.id;
+
+                item.innerHTML = `
+                    <span class="p-icon">🤖</span>
+                    <div class="p-info">
+                        <span class="p-label">${agent.name}</span>
+                        <div class="p-price">${agent.cost_per_task || 0}</div>
+                    </div>
+                `;
+
+                // Drag Handler
+                item.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('type', 'agent');
+                    e.dataTransfer.setData('label', agent.name);
+                    e.dataTransfer.setData('price', agent.cost_per_task || 0);
+                    e.dataTransfer.setData('agentId', agent.id);
+                });
+
+                container.appendChild(item);
+            });
+
+        } catch (err) {
+            container.innerHTML = `<div style="padding:10px; color:red; font-size:11px">Failed to load agents</div>`;
+            console.error(err);
+        }
     },
 
     resize() {
@@ -169,20 +223,22 @@ const studio = {
         const pos = this.getMousePos(e);
         const type = e.dataTransfer.getData('type');
         const label = e.dataTransfer.getData('label');
+        const price = e.dataTransfer.getData('price');
 
         if (type && label) {
-            this.addNode(pos.x, pos.y, label, type);
+            this.addNode(pos.x, pos.y, label, type, price);
         }
     },
 
-    addNode(x, y, label, type) {
+    addNode(x, y, label, type, price = 0) {
         const id = Math.random().toString(36).substr(2, 9);
         this.nodes.push({
             id,
             x,
             y,
             label,
-            type
+            type,
+            price: parseFloat(price)
         });
         this.render();
     },
@@ -247,6 +303,16 @@ const studio = {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(node.label, x + w / 2, y + 15);
+
+        // Price Tag (Top Right)
+        if (node.price > 0) {
+            ctx.fillStyle = '#4ade80';
+            ctx.font = '600 10px Inter, sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(node.price + ' ₵', x + w - 8, y + 10);
+            // Reset for body text
+            ctx.textAlign = 'center';
+        }
 
         // Body Text placeholder
         ctx.fillStyle = '#9898aa';
