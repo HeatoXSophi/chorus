@@ -162,42 +162,50 @@ async def search_wikipedia(topic: str, lang: str) -> dict | None:
             except Exception:
                 continue
     
-    # 2. Fallback: search API (opensearch)
-    search_url = f"https://{lang}.wikipedia.org/w/api.php?action=opensearch&search={urllib.parse.quote(query)}&limit=1&format=json"
+    # Clean query again for API search
+    search_query = query.strip()
+    
+    # 2. Fallback: search API (opensearch) to find the "real" title
+    search_url = f"https://{lang}.wikipedia.org/w/api.php?action=opensearch&search={urllib.parse.quote(search_query)}&limit=3&format=json"
     
     async with httpx.AsyncClient(timeout=15.0) as client:
         try:
             sr = await client.get(search_url)
             if sr.status_code == 200:
                 search_data = sr.json()
+                # search_data format: [query, [titles], [descriptions], [urls]]
                 if len(search_data) > 1 and search_data[1]:
-                    best_match = search_data[1][0]
-                    # Try summary again with the search result
-                    encoded = urllib.parse.quote(best_match.replace(" ", "_"))
-                    retry_url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{encoded}"
-                    r2 = await client.get(retry_url, follow_redirects=True)
-                    if r2.status_code == 200:
-                        wiki_data = r2.json()
-                        summary = wiki_data.get("extract", "")
-                        if summary:
-                            title = wiki_data.get("title", best_match)
-                            description = wiki_data.get("description", "")
-                            page_url = wiki_data.get("content_urls", {}).get("desktop", {}).get("page", "")
-                            
-                            report = f"# {title}\n"
-                            if description:
-                                report += f"*{description}*\n\n"
-                            report += f"---\n\n{summary}\n\n"
-                            report += f"---\n📚 Fuente: Wikipedia"
-                            if page_url:
-                                report += f"\n🔗 {page_url}"
-                            
-                            return {
-                                "report": report,
-                                "title": title,
-                                "summary": summary,
-                                "url": page_url
-                            }
+                    # Try the first few matches
+                    for best_match in search_data[1][:3]:
+                        encoded = urllib.parse.quote(best_match.replace(" ", "_"))
+                        retry_url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{encoded}"
+                        r2 = await client.get(retry_url, follow_redirects=True)
+                        if r2.status_code == 200:
+                            wiki_data = r2.json()
+                            summary = wiki_data.get("extract", "")
+                            if summary:
+                                is_disambig = wiki_data.get("type") == "disambiguation"
+                                title = wiki_data.get("title", best_match)
+                                description = wiki_data.get("description", "")
+                                page_url = wiki_data.get("content_urls", {}).get("desktop", {}).get("page", "")
+                                
+                                report = f"# {title}\n"
+                                if is_disambig:
+                                    report += f"*Página de desambiguación*\n\n"
+                                if description:
+                                    report += f"*{description}*\n\n"
+                                report += f"---\n\n{summary}\n\n"
+                                report += f"---\n📚 Fuente: Wikipedia"
+                                if page_url:
+                                    report += f"\n🔗 {page_url}"
+                                
+                                return {
+                                    "report": report,
+                                    "title": title,
+                                    "summary": summary,
+                                    "url": page_url,
+                                    "is_disambiguation": is_disambig
+                                }
         except Exception:
             pass
             
