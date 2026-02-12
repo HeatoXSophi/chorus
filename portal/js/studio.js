@@ -12,6 +12,7 @@ const studio = {
     // State
     draggingNode: null,
     dragOffset: { x: 0, y: 0 },
+    wiringState: null, // { sourceNodeId: 'a', startX, startY, currentX, currentY }
 
     // Config
     nodeWidth: 160,
@@ -89,6 +90,20 @@ const studio = {
     handleMouseDown(e) {
         const pos = this.getMousePos(e);
 
+        // 1. Check for Output Port click (Right side)
+        const portNode = this.getNodeAtPort(pos.x, pos.y, 'output');
+        if (portNode) {
+            this.wiringState = {
+                sourceNodeId: portNode.id,
+                startX: portNode.x + this.nodeWidth,
+                startY: portNode.y + this.nodeHeight / 2,
+                currentX: pos.x,
+                currentY: pos.y
+            };
+            return;
+        }
+
+        // 2. Check for Node click (Dragging)
         // Check if clicking a node (reverse iteration to pick top-most)
         for (let i = this.nodes.length - 1; i >= 0; i--) {
             const node = this.nodes[i];
@@ -109,16 +124,43 @@ const studio = {
     },
 
     handleMouseMove(e) {
-        if (!this.draggingNode) return;
-
         const pos = this.getMousePos(e);
-        this.draggingNode.x = pos.x - this.dragOffset.x;
-        this.draggingNode.y = pos.y - this.dragOffset.y;
 
-        this.render();
+        // Wiring Mode
+        if (this.wiringState) {
+            this.wiringState.currentX = pos.x;
+            this.wiringState.currentY = pos.y;
+            this.render();
+            return;
+        }
+
+        // Dragging Mode
+        if (this.draggingNode) {
+            this.draggingNode.x = pos.x - this.dragOffset.x;
+            this.draggingNode.y = pos.y - this.dragOffset.y;
+            this.render();
+        }
     },
 
     handleMouseUp(e) {
+        // End Wiring
+        if (this.wiringState) {
+            const pos = this.getMousePos(e);
+            // Check if dropped on Input Port (Left side)
+            const targetNode = this.getNodeAtPort(pos.x, pos.y, 'input');
+
+            if (targetNode && targetNode.id !== this.wiringState.sourceNodeId) {
+                // Create Connection
+                this.connections.push({
+                    from: this.wiringState.sourceNodeId,
+                    to: targetNode.id
+                });
+            }
+            this.wiringState = null;
+            this.render();
+            return;
+        }
+
         this.draggingNode = null;
     },
 
@@ -143,6 +185,27 @@ const studio = {
             type
         });
         this.render();
+    },
+
+    // Check if x,y is near a port type ('input' or 'output')
+    getNodeAtPort(x, y, type) {
+        const PORT_RADIUS = 15; // Hitbox size
+        for (let i = this.nodes.length - 1; i >= 0; i--) {
+            const node = this.nodes[i];
+            let px, py;
+
+            if (type === 'output') {
+                px = node.x + this.nodeWidth;
+                py = node.y + this.nodeHeight / 2;
+            } else {
+                px = node.x;
+                py = node.y + this.nodeHeight / 2;
+            }
+
+            const dist = Math.sqrt((x - px) ** 2 + (y - py) ** 2);
+            if (dist <= PORT_RADIUS) return node;
+        }
+        return null;
     },
 
     // ── Drawing Functions ────────────────────────────────────────────
@@ -241,6 +304,21 @@ const studio = {
             const nodeB = this.nodes.find(n => n.id === conn.to);
             if (nodeA && nodeB) this.drawConnector(nodeA, nodeB);
         });
+
+        // Draw Temporary Wire
+        if (this.wiringState) {
+            const { startX, startY, currentX, currentY } = this.wiringState;
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            // Simple curve to mouse
+            const cp1x = startX + (currentX - startX) / 2;
+            ctx.bezierCurveTo(cp1x, startY, cp1x, currentY, currentX, currentY);
+            ctx.strokeStyle = this.colors.connectorActive;
+            ctx.lineWidth = 3;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
 
         // Draw Nodes
         this.nodes.forEach(node => this.drawNode(node));
