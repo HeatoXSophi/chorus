@@ -637,6 +637,14 @@ function initModals() {
     document.getElementById('btn-send-job')?.addEventListener('click', async () => {
         await executeHireJob();
     });
+
+    // Enter key to send
+    document.getElementById('hire-input')?.addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            await executeHireJob();
+        }
+    });
 }
 
 function openModal(id) { document.getElementById(id)?.classList.add('active'); }
@@ -659,154 +667,362 @@ function initQuickActions() {
 }
 
 // ================================================================
-// HIRE FLOW
+// HIRE FLOW — Chat-Style with Smart Agent Detection
 // ================================================================
+
+let lastJobParams = null;
+let jobHistory = JSON.parse(localStorage.getItem('chorus_job_history') || '[]');
+
+function detectBestSkill(userText) {
+    const lower = userText.toLowerCase();
+
+    // Weather keywords
+    const weatherWords = ['clima', 'weather', 'temperatura', 'pronóstico', 'forecast', 'lluvia', 'rain', 'sol', 'nublado', 'viento', 'wind', 'grados'];
+    if (weatherWords.some(w => lower.includes(w)) || lower.startsWith('clima ') || lower.includes('clima en')) {
+        return { skill: 'weather', cleaned: lower.replace(/clima (en|de|para)?/i, '').replace(/weather (in|for|at)?/i, '').trim() || userText };
+    }
+
+    // Translate keywords
+    const translateWords = ['traduc', 'translate', 'traducción', 'translation', 'traducir', 'como se dice'];
+    if (translateWords.some(w => lower.includes(w)) || lower.startsWith('translate:') || lower.startsWith('traduce:')) {
+        return { skill: 'translate', cleaned: lower.replace(/^(traduc[a-z]*|translate):?\s*/i, '').trim() || userText };
+    }
+
+    // News keywords
+    const newsWords = ['noticia', 'news', 'últimas', 'últimos', 'reciente', 'headline', 'prensa', 'media'];
+    if (newsWords.some(w => lower.includes(w)) || lower.startsWith('noticias ') || lower.includes('noticias de')) {
+        return { skill: 'news', cleaned: lower.replace(/noticias? (de|sobre|para)?/i, '').replace(/news (about|on|for)?/i, '').trim() || userText };
+    }
+
+    // Default: research (Wikipedia)
+    return { skill: 'research', cleaned: userText };
+}
+
+function getSkillEmoji(skill) {
+    const map = { research: '🔍', translate: '🌐', weather: '⛅', news: '📰' };
+    return map[skill] || '🤖';
+}
+
+function getSkillLabel(skill) {
+    const map = { research: 'WikiCloud', translate: 'TranslatorBot', weather: 'WeatherBot', news: 'NewsScanner' };
+    return map[skill] || 'Agente';
+}
+
+function addChatBubble(type, content) {
+    const chatArea = document.getElementById('chat-messages');
+    const bubble = document.createElement('div');
+    bubble.className = `chat-bubble ${type}`;
+    bubble.innerHTML = `<div class="bubble-content">${content}</div>`;
+    bubble.style.animation = 'fadeSlideUp 0.3s ease';
+    chatArea.appendChild(bubble);
+    chatArea.scrollTop = chatArea.scrollHeight;
+    return bubble;
+}
+
+function showTypingIndicator() {
+    const chatArea = document.getElementById('chat-messages');
+    const typing = document.createElement('div');
+    typing.className = 'chat-bubble agent';
+    typing.id = 'typing-indicator';
+    typing.innerHTML = `
+        <div class="bubble-content" style="display:flex;gap:4px;padding:8px 12px;">
+            <span class="typing-dot" style="animation-delay:0s"></span>
+            <span class="typing-dot" style="animation-delay:0.15s"></span>
+            <span class="typing-dot" style="animation-delay:0.3s"></span>
+        </div>
+    `;
+    chatArea.appendChild(typing);
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function removeTypingIndicator() {
+    const el = document.getElementById('typing-indicator');
+    if (el) el.remove();
+}
+
+function formatReport(report) {
+    if (!report) return '';
+    return report
+        .replace(/^# (.+)$/gm, '<h3 style="margin:0 0 8px 0;color:#f0f0f5;font-size:15px;">$1</h3>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^\*(.+)\*$/gm, '<em style="color:#9898aa;">$1</em>')
+        .replace(/---/g, '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:8px 0;">')
+        .replace(/🔗\s*(https?:\/\/\S+)/g, '🔗 <a href="$1" target="_blank" style="color:var(--accent);text-decoration:underline;">Ver artículo completo</a>')
+        .replace(/\n/g, '<br>');
+}
+
+function addRatingWidget(jobId) {
+    const chatArea = document.getElementById('chat-messages');
+    const rating = document.createElement('div');
+    rating.className = 'chat-bubble agent';
+    rating.innerHTML = `
+        <div class="bubble-content" style="text-align:center;">
+            <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">¿Qué te pareció esta respuesta?</div>
+            <div class="star-rating" style="display:flex;gap:4px;justify-content:center;font-size:24px;cursor:pointer;">
+                ${[1, 2, 3, 4, 5].map(i => `<span class="star" data-value="${i}" onclick="rateJob('${jobId}', ${i})" 
+                    onmouseover="highlightStars(this)" onmouseout="resetStars(this)"
+                    style="transition:transform 0.2s;display:inline-block;">☆</span>`).join('')}
+            </div>
+            <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;">
+                <button onclick="retryLastJob()" 
+                    style="background:none; border:1px solid var(--accent); color:var(--accent); padding:6px 14px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.2s;">
+                    🔄 Reintentar Gratis
+                </button>
+            </div>
+        </div>
+    `;
+    chatArea.appendChild(rating);
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function highlightStars(starEl) {
+    const value = parseInt(starEl.dataset.value);
+    const stars = starEl.parentElement.querySelectorAll('.star');
+    stars.forEach((s, i) => {
+        s.textContent = i < value ? '★' : '☆';
+        s.style.color = i < value ? '#f59e0b' : '';
+        s.style.transform = i < value ? 'scale(1.2)' : 'scale(1)';
+    });
+}
+
+function resetStars(starEl) {
+    const stars = starEl.parentElement.querySelectorAll('.star');
+    const rated = starEl.parentElement.dataset.rated;
+    if (!rated) {
+        stars.forEach(s => {
+            s.textContent = '☆';
+            s.style.color = '';
+            s.style.transform = 'scale(1)';
+        });
+    }
+}
+
+function rateJob(jobId, rating) {
+    const allStars = document.querySelectorAll('.star-rating');
+    const lastRating = allStars[allStars.length - 1];
+    if (lastRating) {
+        lastRating.dataset.rated = rating;
+        const stars = lastRating.querySelectorAll('.star');
+        stars.forEach((s, i) => {
+            s.textContent = i < rating ? '★' : '☆';
+            s.style.color = i < rating ? '#f59e0b' : '#555';
+            s.style.transform = 'scale(1)';
+            s.style.cursor = 'default';
+            s.onclick = null;
+        });
+    }
+
+    // Save rating to history
+    const job = jobHistory.find(j => j.id === jobId);
+    if (job) {
+        job.rating = rating;
+        localStorage.setItem('chorus_job_history', JSON.stringify(jobHistory));
+    }
+
+    const msg = rating >= 4 ? '¡Gracias! 🌟 Me alegra que te haya servido.' :
+        rating >= 3 ? 'Gracias por tu feedback. Intentaré mejorar.' :
+            '¡Lo siento! Prueba con otro término o usa "🔄 Reintentar Gratis".';
+
+    setTimeout(() => addChatBubble('agent', msg), 500);
+}
 
 async function hireFromMarketplace(agentId, skillName, endpoint, ownerId) {
     openModal('modal-hire');
-    const skillSelect = document.getElementById('hire-skill');
-    if (skillSelect) skillSelect.value = skillName;
+
+    // Reset chat to welcome message only
+    const chatArea = document.getElementById('chat-messages');
+    chatArea.innerHTML = `
+        <div class="chat-bubble agent">
+            <div class="bubble-content">
+                ¡Hola! 👋 Soy tu asistente Chorus. Escribe lo que necesitas y encontraré al mejor agente para ayudarte.
+                <br><br>
+                <strong>Prueba escribir:</strong><br>
+                🔍 "Bitcoin" — Investigación Wikipedia<br>
+                🌐 "Translate: Hello world" — Traducción<br>
+                ⛅ "Clima en Madrid" — Pronóstico<br>
+                📰 "Noticias de tecnología" — Noticias
+            </div>
+        </div>
+    `;
+
+    // Pre-set skill if coming from marketplace card
+    document.getElementById('hire-skill').value = skillName || '';
     document.getElementById('hire-input').value = '';
 
-    // Store agent info for the job
-    document.getElementById('btn-send-job').dataset.endpoint = endpoint;
-    document.getElementById('btn-send-job').dataset.agentOwner = ownerId;
-    document.getElementById('btn-send-job').dataset.agentId = agentId;
+    // Focus input after modal animation
+    setTimeout(() => document.getElementById('hire-input').focus(), 400);
+
+    // Update chat header with agent info
+    const nameEl = document.getElementById('chat-agent-name');
+    const avatarEl = document.getElementById('chat-agent-avatar');
+    if (nameEl && skillName) {
+        nameEl.textContent = getSkillLabel(skillName);
+        avatarEl.textContent = getSkillEmoji(skillName);
+    }
+
+    // Store agent info
+    const btn = document.getElementById('btn-send-job');
+    btn.dataset.endpoint = endpoint || '';
+    btn.dataset.agentOwner = ownerId || '';
+    btn.dataset.agentId = agentId || '';
 }
 
 async function executeHireJob() {
     const btn = document.getElementById('btn-send-job');
-    const skill = document.getElementById('hire-skill').value;
     const userText = document.getElementById('hire-input').value.trim();
     const budget = parseFloat(document.getElementById('hire-budget').value) || 100;
 
-    if (!skill) { alert('Selecciona una habilidad'); return; }
-    if (!userText) { alert('Escribe lo que necesitas investigar'); return; }
+    if (!userText) return;
 
-    // Auto-wrap plain text into the format the agent expects
-    const inputData = { topic: userText };
+    // Show user message in chat
+    addChatBubble('user', userText);
+    document.getElementById('hire-input').value = '';
 
-    btn.querySelector('span').textContent = 'Procesando...';
+    // Smart skill detection
+    let skill = document.getElementById('hire-skill').value;
+    let searchText = userText;
+
+    if (!skill || skill === '') {
+        const detected = detectBestSkill(userText);
+        skill = detected.skill;
+        searchText = detected.cleaned;
+    }
+
+    // Update header to show which agent is handling
+    const nameEl = document.getElementById('chat-agent-name');
+    const avatarEl = document.getElementById('chat-agent-avatar');
+    if (nameEl) nameEl.textContent = getSkillLabel(skill);
+    if (avatarEl) avatarEl.textContent = getSkillEmoji(skill);
+
+    // Show agent detection message
+    addChatBubble('agent', `${getSkillEmoji(skill)} Buscando con <strong>${getSkillLabel(skill)}</strong>...`);
+
+    // Show typing indicator
+    showTypingIndicator();
     btn.disabled = true;
 
-    const resultDiv = document.getElementById('hire-result');
-    resultDiv.style.display = 'none';
+    const inputData = { topic: searchText };
 
-    // Find an agent for this skill
-    const discovered = await API.discover(skill);
-    if (!discovered.agents?.length) {
-        showHireResult(false, null, 'No se encontró ningún agente con esa habilidad');
-        btn.querySelector('span').textContent = '🚀 Investigar';
-        btn.disabled = false;
-        return;
-    }
+    try {
+        // Discover agents with this skill
+        const discovered = await API.discover(skill);
 
-    const agent = discovered.agents[0];
-    const endpoint = agent.api_endpoint;
-    const agentOwner = agent.owner_id;
+        let endpoint, agentOwner;
 
-    // Save for free retry
-    lastJobParams = { skill, inputData, endpoint, agentOwner };
-
-    // Send job
-    const result = await API.sendJob(endpoint, skill, inputData, budget);
-
-    if (result?.status === 'SUCCESS') {
-        // Process payment
-        if (state.user && result.execution_cost > 0) {
-            await API.transfer(state.user.ownerId, agentOwner, result.execution_cost, result.job_id);
+        if (discovered.agents && discovered.agents.length) {
+            const agent = discovered.agents[0];
+            endpoint = agent.api_endpoint;
+            agentOwner = agent.owner_id;
+        } else {
+            // Fallback: try direct endpoint
+            const fallbackEndpoints = {
+                'research': 'https://chorus-ruddy.vercel.app/api/wiki',
+                'translate': 'https://chorus-ruddy.vercel.app/api/translate',
+                'weather': 'https://chorus-ruddy.vercel.app/api/weather',
+                'news': 'https://chorus-ruddy.vercel.app/api/news'
+            };
+            endpoint = fallbackEndpoints[skill] || fallbackEndpoints['research'];
+            agentOwner = '';
         }
-        showHireResult(true, result);
-    } else {
-        showHireResult(false, result, result?.error_message || 'Trabajo fallido');
+
+        // Save for retry
+        lastJobParams = { skill, inputData, endpoint, agentOwner };
+
+        // Send the job
+        const result = await API.sendJob(endpoint, skill, inputData, budget);
+
+        removeTypingIndicator();
+
+        if (result && result.status === 'SUCCESS') {
+            const outputData = result.output_data || {};
+
+            // Process payment
+            if (state.user && agentOwner && result.execution_cost > 0) {
+                try {
+                    await API.transfer(state.user.ownerId, agentOwner, result.execution_cost, result.job_id);
+                } catch (e) { /* payment optional */ }
+            }
+
+            // Format and display report
+            let reportHtml;
+            if (outputData.report) {
+                reportHtml = formatReport(outputData.report);
+                if (outputData.thumbnail) {
+                    reportHtml = '<img src="' + outputData.thumbnail + '" style="width:100%;max-width:200px;border-radius:8px;margin-bottom:10px;float:right;margin-left:10px;">' + reportHtml;
+                }
+            } else if (outputData.error) {
+                reportHtml = '⚠️ ' + outputData.error;
+            } else {
+                reportHtml = '<pre style="font-size:12px;color:#ccc;">' + JSON.stringify(outputData, null, 2) + '</pre>';
+            }
+
+            reportHtml += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);font-size:11px;color:var(--text-muted);">' +
+                '💰 Costo: Ƈ ' + (result.execution_cost || 0).toFixed(0) + ' · ⏱️ ' + (result.execution_time_ms || 0) + 'ms' +
+                '</div>';
+
+            addChatBubble('agent', reportHtml);
+
+            // Save to job history
+            const jobRecord = {
+                id: result.job_id || crypto.randomUUID(),
+                skill: skill,
+                query: userText,
+                agentName: getSkillLabel(skill),
+                result: outputData,
+                cost: result.execution_cost || 0,
+                timestamp: new Date().toISOString(),
+                rating: null
+            };
+            jobHistory.unshift(jobRecord);
+            if (jobHistory.length > 50) jobHistory = jobHistory.slice(0, 50);
+            localStorage.setItem('chorus_job_history', JSON.stringify(jobHistory));
+
+            // Show rating widget
+            addRatingWidget(jobRecord.id);
+
+        } else {
+            addChatBubble('agent', '❌ ' + (result && result.error_message ? result.error_message : 'Error al procesar tu solicitud.') +
+                '<br><br><button onclick="retryLastJob()" ' +
+                'style="background:none; border:1px solid var(--accent); color:var(--accent); padding:6px 14px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">' +
+                '🔄 Reintentar</button>');
+        }
+
+    } catch (err) {
+        removeTypingIndicator();
+        addChatBubble('agent', '❌ Error de conexión: ' + err.message);
     }
 
-    btn.querySelector('span').textContent = '🚀 Investigar';
     btn.disabled = false;
 }
-
-function showHireResult(success, result, errorMsg = '') {
-    const div = document.getElementById('hire-result');
-    div.style.display = 'block';
-
-    const statusDiv = document.getElementById('hire-result-status');
-    const outputDiv = document.getElementById('hire-result-output');
-    const metaDiv = document.getElementById('hire-result-meta');
-
-    if (success) {
-        statusDiv.className = 'hire-result-header success';
-        statusDiv.textContent = '✅ Trabajo completado exitosamente';
-
-        // Pretty-print the report if available, otherwise show JSON
-        const outputData = result.output_data || {};
-        if (outputData.report) {
-            // Convert markdown-ish report to readable HTML
-            let report = outputData.report
-                .replace(/^# (.+)$/gm, '<h3 style="margin:0 0 8px 0;color:#f0f0f5;">$1</h3>')
-                .replace(/^\*(.+)\*$/gm, '<em style="color:#9898aa;">$1</em>')
-                .replace(/---/g, '<hr style="border:none;border-top:1px solid #333;margin:10px 0;">')
-                .replace(/📚/g, '📚')
-                .replace(/\n/g, '<br>');
-            outputDiv.innerHTML = `<div style="font-family:Inter,sans-serif;font-size:13px;line-height:1.6;">${report}</div>`;
-        } else if (outputData.error) {
-            outputDiv.textContent = `⚠️ ${outputData.error}`;
-        } else {
-            outputDiv.textContent = JSON.stringify(outputData, null, 2);
-        }
-
-        metaDiv.innerHTML = `
-            <span>Costo: Ƈ ${(result.execution_cost || 0).toFixed(2)}</span>
-            <span>Tiempo: ${result.execution_time_ms || 0}ms</span>
-            <span>Job: ${(result.job_id || '').slice(0, 12)}...</span>
-            <button onclick="retryLastJob()" class="btn-retry" 
-                style="margin-left:auto; background:none; border:1px solid var(--accent); color:var(--accent); padding:4px 12px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.2s ease;"
-                onmouseover="this.style.background='var(--accent)';this.style.color='#fff';" 
-                onmouseout="this.style.background='none';this.style.color='var(--accent)';">
-                🔄 Reintentar Gratis
-            </button>
-        `;
-    } else {
-        statusDiv.className = 'hire-result-header failure';
-        statusDiv.textContent = `❌ ${errorMsg}`;
-        outputDiv.textContent = result ? JSON.stringify(result, null, 2) : 'Sin respuesta';
-        metaDiv.innerHTML = `
-            <button onclick="retryLastJob()" class="btn-retry" 
-                style="background:none; border:1px solid var(--accent); color:var(--accent); padding:4px 12px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.2s ease;"
-                onmouseover="this.style.background='var(--accent)';this.style.color='#fff';" 
-                onmouseout="this.style.background='none';this.style.color='var(--accent)';">
-                🔄 Reintentar Gratis
-            </button>
-        `;
-    }
-}
-
-// Store last job parameters for free retry
-let lastJobParams = null;
 
 async function retryLastJob() {
     if (!lastJobParams) return;
 
+    addChatBubble('user', '🔄 Reintentando...');
+    showTypingIndicator();
+
     const btn = document.getElementById('btn-send-job');
-    btn.querySelector('span').textContent = '🔄 Reintentando...';
     btn.disabled = true;
 
-    const resultDiv = document.getElementById('hire-result');
-    resultDiv.style.display = 'none';
-
-    const { skill, inputData, endpoint, agentOwner } = lastJobParams;
-
-    // Send job WITHOUT charging (budget = 0 signals free retry)
+    const { skill, inputData, endpoint } = lastJobParams;
     const result = await API.sendJob(endpoint, skill, inputData, 0);
 
-    if (result?.status === 'SUCCESS') {
-        showHireResult(true, result);
+    removeTypingIndicator();
+
+    if (result && result.status === 'SUCCESS') {
+        const outputData = result.output_data || {};
+        let reportHtml = outputData.report ? formatReport(outputData.report) : JSON.stringify(outputData, null, 2);
+        reportHtml += '<div style="margin-top:8px;font-size:11px;color:var(--green);">🆓 Reintento gratuito</div>';
+        addChatBubble('agent', reportHtml);
+        addRatingWidget(crypto.randomUUID());
     } else {
-        showHireResult(false, result, result?.error_message || 'Reintento fallido');
+        addChatBubble('agent', '❌ ' + (result && result.error_message ? result.error_message : 'Reintento fallido'));
     }
 
-    btn.querySelector('span').textContent = '🚀 Investigar';
     btn.disabled = false;
 }
+
+function showHireResult() { /* Legacy - now using chat bubbles */ }
 
 // ================================================================
 // UTILS
