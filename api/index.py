@@ -49,15 +49,18 @@ async def wiki_job(request: Request):
         file_info = input_data.get("file")
         
         # Clean topic: remove common natural language fillers
-        topic = raw_topic.lower()
+        topic = raw_topic.lower().strip()
         fillers = [
             "todo sobre ", "algo de ", "información de ", "busca sobre ", 
             "investiga ", "dime sobre ", "qué es ", "quién es ", "quien es ",
-            "háblame de ", "cuéntame de ", "resumen de ", "explícame "
+            "háblame de ", "cuéntame de ", "resumen de ", "explícame ",
+            "información sobre ", "qué sabes de ", "quién fue "
         ]
+        found_filler = False
         for filler in fillers:
             if topic.startswith(filler):
                 topic = topic.replace(filler, "", 1)
+                found_filler = True
                 break
         topic = topic.strip()
         
@@ -122,11 +125,11 @@ async def search_wikipedia(topic: str, lang: str) -> dict | None:
                 r = await client.get(url, follow_redirects=True)
                 if r.status_code == 200:
                     wiki_data = r.json()
-                    if wiki_data.get("type") == "disambiguation":
-                        continue # Try next variant or fallback
-                        
+                    # If it's disambiguation, we'll collect it as a backup
                     summary = wiki_data.get("extract", "")
                     if summary:
+                        is_disambig = wiki_data.get("type") == "disambiguation"
+                        
                         title = wiki_data.get("title", variant)
                         description = wiki_data.get("description", "")
                         thumbnail = wiki_data.get("thumbnail", {}).get("source", "")
@@ -134,9 +137,15 @@ async def search_wikipedia(topic: str, lang: str) -> dict | None:
                         
                         lang_label = "Español" if lang == "es" else "English"
                         report = f"# {title}\n"
+                        if is_disambig:
+                            report += f"*Esta es una página de desambiguación*\n\n"
                         if description:
                             report += f"*{description}*\n\n"
                         report += f"---\n\n{summary}\n\n"
+                        
+                        if is_disambig:
+                            report += "💡 *Tip: Sé más específico para obtener un reporte detallado.*\n\n"
+                            
                         report += f"---\n📚 Fuente: Wikipedia ({lang_label})"
                         if page_url:
                             report += f"\n🔗 {page_url}"
@@ -147,7 +156,8 @@ async def search_wikipedia(topic: str, lang: str) -> dict | None:
                             "summary": summary,
                             "thumbnail": thumbnail,
                             "language": lang,
-                            "url": page_url
+                            "url": page_url,
+                            "is_disambiguation": is_disambig
                         }
             except Exception:
                 continue
