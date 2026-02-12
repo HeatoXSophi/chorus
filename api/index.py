@@ -82,8 +82,7 @@ async def wiki_job(request: Request):
         if not output:
             output = {
                 "error": f"No encontré información sobre '{topic}' en Wikipedia.", 
-                "report": f"⚠️ No encontré información sobre '{topic}' en Wikipedia. Intenta con otro término más específico.",
-                "debug": debug_trace
+                "report": f"⚠️ No encontré información sobre '{topic}' en Wikipedia. Intenta con otro término más específico."
             }
         
         # If file is present, personalize the report
