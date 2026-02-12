@@ -556,7 +556,7 @@ function renderMarketplaceAgents(agents) {
                     </div>
                 </div>
                 <div class="agent-skill-badge">${skill.skill_name || 'N/A'}</div>
-                <p class="mp-desc" style="font-size:12px; color:#aaa; margin:10px 0; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">
+                <p class="mp-desc">
                     ${agent.description || "Sin descripción disponible."}
                 </p>
                 <div class="mp-footer">
@@ -696,7 +696,7 @@ async function executeHireJob() {
     const discovered = await API.discover(skill);
     if (!discovered.agents?.length) {
         showHireResult(false, null, 'No se encontró ningún agente con esa habilidad');
-        btn.querySelector('span').textContent = 'Enviar Trabajo';
+        btn.querySelector('span').textContent = '🚀 Investigar';
         btn.disabled = false;
         return;
     }
@@ -704,6 +704,9 @@ async function executeHireJob() {
     const agent = discovered.agents[0];
     const endpoint = agent.api_endpoint;
     const agentOwner = agent.owner_id;
+
+    // Save for free retry
+    lastJobParams = { skill, inputData, endpoint, agentOwner };
 
     // Send job
     const result = await API.sendJob(endpoint, skill, inputData, budget);
@@ -718,7 +721,7 @@ async function executeHireJob() {
         showHireResult(false, result, result?.error_message || 'Trabajo fallido');
     }
 
-    btn.querySelector('span').textContent = 'Enviar Trabajo';
+    btn.querySelector('span').textContent = '🚀 Investigar';
     btn.disabled = false;
 }
 
@@ -733,18 +736,76 @@ function showHireResult(success, result, errorMsg = '') {
     if (success) {
         statusDiv.className = 'hire-result-header success';
         statusDiv.textContent = '✅ Trabajo completado exitosamente';
-        outputDiv.textContent = JSON.stringify(result.output_data, null, 2);
+
+        // Pretty-print the report if available, otherwise show JSON
+        const outputData = result.output_data || {};
+        if (outputData.report) {
+            // Convert markdown-ish report to readable HTML
+            let report = outputData.report
+                .replace(/^# (.+)$/gm, '<h3 style="margin:0 0 8px 0;color:#f0f0f5;">$1</h3>')
+                .replace(/^\*(.+)\*$/gm, '<em style="color:#9898aa;">$1</em>')
+                .replace(/---/g, '<hr style="border:none;border-top:1px solid #333;margin:10px 0;">')
+                .replace(/📚/g, '📚')
+                .replace(/\n/g, '<br>');
+            outputDiv.innerHTML = `<div style="font-family:Inter,sans-serif;font-size:13px;line-height:1.6;">${report}</div>`;
+        } else if (outputData.error) {
+            outputDiv.textContent = `⚠️ ${outputData.error}`;
+        } else {
+            outputDiv.textContent = JSON.stringify(outputData, null, 2);
+        }
+
         metaDiv.innerHTML = `
             <span>Costo: Ƈ ${(result.execution_cost || 0).toFixed(2)}</span>
             <span>Tiempo: ${result.execution_time_ms || 0}ms</span>
             <span>Job: ${(result.job_id || '').slice(0, 12)}...</span>
+            <button onclick="retryLastJob()" class="btn-retry" 
+                style="margin-left:auto; background:none; border:1px solid var(--accent); color:var(--accent); padding:4px 12px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.2s ease;"
+                onmouseover="this.style.background='var(--accent)';this.style.color='#fff';" 
+                onmouseout="this.style.background='none';this.style.color='var(--accent)';">
+                🔄 Reintentar Gratis
+            </button>
         `;
     } else {
         statusDiv.className = 'hire-result-header failure';
         statusDiv.textContent = `❌ ${errorMsg}`;
         outputDiv.textContent = result ? JSON.stringify(result, null, 2) : 'Sin respuesta';
-        metaDiv.innerHTML = '';
+        metaDiv.innerHTML = `
+            <button onclick="retryLastJob()" class="btn-retry" 
+                style="background:none; border:1px solid var(--accent); color:var(--accent); padding:4px 12px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.2s ease;"
+                onmouseover="this.style.background='var(--accent)';this.style.color='#fff';" 
+                onmouseout="this.style.background='none';this.style.color='var(--accent)';">
+                🔄 Reintentar Gratis
+            </button>
+        `;
     }
+}
+
+// Store last job parameters for free retry
+let lastJobParams = null;
+
+async function retryLastJob() {
+    if (!lastJobParams) return;
+
+    const btn = document.getElementById('btn-send-job');
+    btn.querySelector('span').textContent = '🔄 Reintentando...';
+    btn.disabled = true;
+
+    const resultDiv = document.getElementById('hire-result');
+    resultDiv.style.display = 'none';
+
+    const { skill, inputData, endpoint, agentOwner } = lastJobParams;
+
+    // Send job WITHOUT charging (budget = 0 signals free retry)
+    const result = await API.sendJob(endpoint, skill, inputData, 0);
+
+    if (result?.status === 'SUCCESS') {
+        showHireResult(true, result);
+    } else {
+        showHireResult(false, result, result?.error_message || 'Reintento fallido');
+    }
+
+    btn.querySelector('span').textContent = '🚀 Investigar';
+    btn.disabled = false;
 }
 
 // ================================================================

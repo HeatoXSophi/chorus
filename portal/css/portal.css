@@ -1364,14 +1364,81 @@ button {
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 20px;
-    transition: all var(--duration) var(--ease);
+    transition: all 0.35s var(--ease);
     cursor: pointer;
+    position: relative;
+    animation: cardSlideIn 0.4s var(--ease) backwards;
+}
+
+.mp-agent-card:nth-child(1) {
+    animation-delay: 0.05s;
+}
+
+.mp-agent-card:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.mp-agent-card:nth-child(3) {
+    animation-delay: 0.15s;
+}
+
+.mp-agent-card:nth-child(4) {
+    animation-delay: 0.2s;
+}
+
+.mp-agent-card:nth-child(5) {
+    animation-delay: 0.25s;
+}
+
+.mp-agent-card:nth-child(6) {
+    animation-delay: 0.3s;
+}
+
+@keyframes cardSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .mp-agent-card:hover {
     border-color: var(--accent);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(124, 92, 252, 0.15), 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.mp-agent-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--blue), var(--accent));
+    background-size: 200% 100%;
+    border-radius: var(--radius) var(--radius) 0 0;
+    opacity: 0;
+    transition: opacity 0.35s var(--ease);
+    animation: gradientSlide 3s linear infinite;
+}
+
+.mp-agent-card:hover::before {
+    opacity: 1;
+}
+
+@keyframes gradientSlide {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    100% {
+        background-position: 200% 50%;
+    }
 }
 
 .mp-header {
@@ -1382,24 +1449,41 @@ button {
 }
 
 .mp-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    background: var(--accent-glow);
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent-glow), rgba(59, 130, 246, 0.2));
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: 20px;
+    transition: transform 0.3s var(--ease);
+}
+
+.mp-agent-card:hover .mp-avatar {
+    transform: scale(1.1) rotate(-3deg);
 }
 
 .mp-name {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
 }
 
 .mp-owner {
     font-size: 11px;
     color: var(--text-muted);
+}
+
+.mp-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 10px 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.5;
 }
 
 .mp-footer {
@@ -1412,9 +1496,12 @@ button {
 }
 
 .mp-cost {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 700;
-    color: var(--accent);
+    background: linear-gradient(135deg, var(--accent), var(--blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .mp-rep {
@@ -1430,19 +1517,22 @@ button {
 }
 
 .mp-hire-btn {
-    background: var(--accent);
+    background: linear-gradient(135deg, var(--accent), #5b3ec9);
     color: #fff;
     border: none;
-    padding: 6px 14px;
-    border-radius: 6px;
+    padding: 8px 18px;
+    border-radius: 8px;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    transition: all var(--duration) var(--ease);
+    transition: all 0.3s var(--ease);
+    box-shadow: 0 2px 8px var(--accent-glow);
 }
 
 .mp-hire-btn:hover {
-    background: var(--accent-hover);
+    background: linear-gradient(135deg, #6b4ae8, #4a2db8);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px var(--accent-glow);
 }
 
 /* ================================================================
@@ -1566,7 +1656,8 @@ button {
     max-width: 90vw;
     max-height: 80vh;
     overflow-y: auto;
-    animation: modalPop 0.3s var(--ease);
+    animation: modalPop 0.35s var(--ease);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .modal-wide {
@@ -1702,21 +1793,25 @@ button {
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     padding: 16px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
     color: var(--text-primary);
     white-space: pre-wrap;
-    word-break: break-all;
-    max-height: 200px;
+    word-break: break-word;
+    max-height: 300px;
     overflow-y: auto;
+    line-height: 1.6;
+    animation: fadeSlideUp 0.3s var(--ease);
 }
 
 .hire-result-meta {
     display: flex;
+    align-items: center;
     gap: 16px;
-    margin-top: 8px;
+    margin-top: 12px;
     font-size: 12px;
     color: var(--text-muted);
+    flex-wrap: wrap;
 }
 
 /* ── Animations ─────────────────────────────────────────────── */
