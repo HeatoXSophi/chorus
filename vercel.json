@@ -1,6 +1,22 @@
 {
-    "buildCommand": null,
-    "outputDirectory": "portal",
-    "framework": null,
-    "cleanUrls": true
+    "builds": [
+        {
+            "src": "portal/**",
+            "use": "@vercel/static"
+        },
+        {
+            "src": "api/index.py",
+            "use": "@vercel/python"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/api/(.*)",
+            "dest": "/api/index.py"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/portal/$1"
+        }
+    ]
 }
