@@ -65,14 +65,26 @@ async def wiki_job(request: Request):
         topic = topic.strip()
         
         output = None
-        for lang in ["es", "en"]:
-            result = await search_wikipedia(topic, lang)
-            if result:
-                output = result
-                break
+        tried_queries = [topic]
+        if topic != raw_topic.strip():
+            tried_queries.append(raw_topic.strip())
+            
+        debug_trace = []
+        for q in tried_queries:
+            for lang in ["es", "en"]:
+                debug_trace.append(f"Trying {q} in {lang}")
+                result = await search_wikipedia(q, lang)
+                if result:
+                    output = result
+                    break
+            if output: break
         
         if not output:
-            output = {"error": f"No encontré información sobre '{topic}' en Wikipedia.", "report": f"⚠️ No encontré información sobre '{topic}' en Wikipedia. Intenta con otro término."}
+            output = {
+                "error": f"No encontré información sobre '{topic}' en Wikipedia.", 
+                "report": f"⚠️ No encontré información sobre '{topic}' en Wikipedia. Intenta con otro término más específico.",
+                "debug": debug_trace
+            }
         
         # If file is present, personalize the report
         if file_info and "report" in output:
@@ -141,13 +153,13 @@ async def search_wikipedia(topic: str, lang: str) -> dict | None:
                         lang_label = "Español" if lang == "es" else "English"
                         report = f"# {title}\n"
                         if is_disambig:
-                            report += f"*Esta es una página de desambiguación*\n\n"
+                            report += f"*(Página de referencia general)*\n\n"
                         if description:
                             report += f"*{description}*\n\n"
                         report += f"---\n\n{summary}\n\n"
                         
                         if is_disambig:
-                            report += "💡 *Tip: Sé más específico para obtener un reporte detallado.*\n\n"
+                            report += "💡 *Tip: Puedes buscar términos más específicos relacionados con esta página.*\n\n"
                             
                         report += f"---\n📚 Fuente: Wikipedia ({lang_label})"
                         if page_url:
