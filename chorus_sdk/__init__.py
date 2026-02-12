@@ -24,15 +24,14 @@ Usage:
     )
 """
 
-from chorus_sdk.client import (
     connect,
     discover,
+    discover_all,
     hire,
     hire_best,
     get_balance,
     get_economy,
     get_agent,
-)
 from chorus_sdk.publisher import publish, serve
 from chorus_sdk.models import AgentProfile, HireResult, EconomyStats
 from chorus_sdk.errors import (
