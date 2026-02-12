@@ -116,7 +116,10 @@ async def search_wikipedia(topic: str, lang: str) -> dict | None:
     # Remove duplicates but maintain order
     search_variants = list(dict.fromkeys(search_variants))
     
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    # Wikipedia requires a meaningful User-Agent
+    headers = {"User-Agent": "ChorusBot/2.0 (https://chorus-ruddy.vercel.app/; contact@chorus.app)"}
+    
+    async with httpx.AsyncClient(timeout=15.0, headers=headers) as client:
         for variant in search_variants:
             encoded = urllib.parse.quote(variant.replace(" ", "_"))
             url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{encoded}"
@@ -168,7 +171,7 @@ async def search_wikipedia(topic: str, lang: str) -> dict | None:
     # 2. Fallback: search API (opensearch) to find the "real" title
     search_url = f"https://{lang}.wikipedia.org/w/api.php?action=opensearch&search={urllib.parse.quote(search_query)}&limit=3&format=json"
     
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=15.0, headers=headers) as client:
         try:
             sr = await client.get(search_url)
             if sr.status_code == 200:
