@@ -42,6 +42,7 @@ async def news_root():
 
 @app.post("/api/wiki/jobs")
 async def wiki_job(request: Request):
+    try:
         data = await request.json()
         input_data = data.get("input_data", {})
         topic = input_data.get("topic", input_data.get("text", "Technology"))
