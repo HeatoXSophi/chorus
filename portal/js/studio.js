@@ -12,7 +12,7 @@ const studio = {
     // State
     draggingNode: null,
     dragOffset: { x: 0, y: 0 },
-    wiringState: null, // { sourceNodeId: 'a', startX, startY, currentX, currentY }
+    wiringState: null, // { sourceNodeId: 'a', startX, startY, currentX, currentY, snapNodeId: null }
 
     // Config
     nodeWidth: 160,
@@ -305,9 +305,11 @@ const studio = {
             if (nodeA && nodeB) this.drawConnector(nodeA, nodeB);
         });
 
-        // Draw Temporary Wire
+        // Draw Temporary Wire & Snap Higlight
         if (this.wiringState) {
-            const { startX, startY, currentX, currentY } = this.wiringState;
+            const { startX, startY, currentX, currentY, snapNodeId } = this.wiringState;
+
+            // Draw Wire
             ctx.beginPath();
             ctx.moveTo(startX, startY);
             // Simple curve to mouse
@@ -318,6 +320,21 @@ const studio = {
             ctx.setLineDash([5, 5]);
             ctx.stroke();
             ctx.setLineDash([]);
+
+            // Draw Snap Highlight Ring
+            if (snapNodeId) {
+                ctx.beginPath();
+                ctx.arc(currentX, currentY, 10, 0, Math.PI * 2);
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(currentX, currentY, 14, 0, Math.PI * 2);
+                ctx.strokeStyle = this.colors.connectorActive;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
         }
 
         // Draw Nodes
