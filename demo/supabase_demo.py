@@ -51,7 +51,7 @@ def main():
     agent1 = chorus.publish(
         name="EchoBot 3000",
         skill="echo",
-        cost=0.1,
+        cost=5.0, # 5 Credits ($0.50)
         handler=echo_handler,
         description="I repeat everything you say.",
         serverless=False # Local Hybrid
@@ -60,7 +60,7 @@ def main():
     agent2 = chorus.publish(
         name="SuperCalc",
         skill="calculator",
-        cost=0.5,
+        cost=25.0, # 25 Credits ($2.50)
         handler=calc_handler,
         description="Math is easy.",
         serverless=False

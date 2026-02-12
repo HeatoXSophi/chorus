@@ -42,6 +42,14 @@ def publish(
     Requires chorus.connect() to be called first.
     """
     
+    # 0. Enforce Minimum Price (Policy)
+    MIN_COST = 0.1
+    if cost < MIN_COST:
+        raise ValueError(f"❌ Policy Violation: Minimum cost per agent is {MIN_COST} Credits. Your price: {cost}")
+    
+    if cost < 5.0:
+        print(f"⚠️ Recommendation: Most creators charge at least 5.0 Credits ($0.50) for quality agents.")
+    
     # 1. Ensure connected
     if not client._connected:
          # Try to auto-connect if env vars present? 

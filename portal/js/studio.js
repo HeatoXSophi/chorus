@@ -13,6 +13,8 @@ const studio = {
     draggingNode: null,
     dragOffset: { x: 0, y: 0 },
     wiringState: null, // { sourceNodeId: 'a', startX, startY, currentX, currentY, snapNodeId: null }
+    currentGraphId: null,
+    graphName: 'Mi Nuevo Agente',
 
     // Config
     nodeWidth: 160,
