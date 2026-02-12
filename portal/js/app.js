@@ -666,7 +666,7 @@ async function hireFromMarketplace(agentId, skillName, endpoint, ownerId) {
     openModal('modal-hire');
     const skillSelect = document.getElementById('hire-skill');
     if (skillSelect) skillSelect.value = skillName;
-    document.getElementById('hire-input').value = JSON.stringify({ text: "Hello from Chorus Portal!" }, null, 2);
+    document.getElementById('hire-input').value = '';
 
     // Store agent info for the job
     document.getElementById('btn-send-job').dataset.endpoint = endpoint;
@@ -677,18 +677,14 @@ async function hireFromMarketplace(agentId, skillName, endpoint, ownerId) {
 async function executeHireJob() {
     const btn = document.getElementById('btn-send-job');
     const skill = document.getElementById('hire-skill').value;
-    const inputRaw = document.getElementById('hire-input').value;
-    const budget = parseFloat(document.getElementById('hire-budget').value) || 1.0;
+    const userText = document.getElementById('hire-input').value.trim();
+    const budget = parseFloat(document.getElementById('hire-budget').value) || 100;
 
     if (!skill) { alert('Selecciona una habilidad'); return; }
+    if (!userText) { alert('Escribe lo que necesitas investigar'); return; }
 
-    let inputData;
-    try {
-        inputData = JSON.parse(inputRaw);
-    } catch {
-        alert('El JSON de entrada no es válido');
-        return;
-    }
+    // Auto-wrap plain text into the format the agent expects
+    const inputData = { topic: userText };
 
     btn.querySelector('span').textContent = 'Procesando...';
     btn.disabled = true;
