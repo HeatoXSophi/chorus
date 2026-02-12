@@ -727,6 +727,15 @@ function detectBestSkill(userText) {
         return { skill: 'translate', cleaned: lower.replace(/^(traduc[a-z]*|translate):?\s*/i, '').trim() || userText };
     }
 
+    // Research / Wiki keywords
+    const researchWords = ['investiga', 'busca sobre', 'todo sobre', 'qué es', 'quien es', 'quién es', 'historia de', 'wikipedia', 'resumen de', 'research'];
+    for (const word of researchWords) {
+        if (lower.includes(word)) {
+            const regex = new RegExp(word, 'gi');
+            return { skill: 'research', cleaned: userText.replace(regex, '').trim() || userText };
+        }
+    }
+
     // News keywords
     const newsWords = ['noticia', 'news', 'últimas', 'últimos', 'reciente', 'headline', 'prensa', 'media'];
     if (newsWords.some(w => lower.includes(w)) || lower.startsWith('noticias ') || lower.includes('noticias de')) {

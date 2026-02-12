@@ -45,8 +45,21 @@ async def wiki_job(request: Request):
     try:
         data = await request.json()
         input_data = data.get("input_data", {})
-        topic = input_data.get("topic", input_data.get("text", "Technology"))
+        raw_topic = input_data.get("topic", input_data.get("text", "Technology"))
         file_info = input_data.get("file")
+        
+        # Clean topic: remove common natural language fillers
+        topic = raw_topic.lower()
+        fillers = [
+            "todo sobre ", "algo de ", "información de ", "busca sobre ", 
+            "investiga ", "dime sobre ", "qué es ", "quién es ", "quien es ",
+            "háblame de ", "cuéntame de ", "resumen de ", "explícame "
+        ]
+        for filler in fillers:
+            if topic.startswith(filler):
+                topic = topic.replace(filler, "", 1)
+                break
+        topic = topic.strip()
         
         output = None
         for lang in ["es", "en"]:
